@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naruto Shop</title>
+<style>
+body { font-family: Arial, sans-serif; background:#f0f0f0; margin:0; padding:0; }
+.container { max-width:600px; margin:50px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+h1 { text-align:center; }
+input, select { width:100%; padding:10px; margin:8px 0; border-radius:5px; border:1px solid #ccc; }
+button { padding:10px 20px; background:#1e88e5; color:#fff; border:none; border-radius:5px; cursor:pointer; margin-top:10px; }
+button:hover { background:#1565c0; }
+.product-img { width:100%; border-radius:10px; margin-bottom:15px; }
+.price { font-size:20px; color:#888; }
+.discount { font-size:24px; color:#e53935; margin-left:10px; }
+.variants { margin:15px 0; }
+.offer { font-size:14px; color:#2e7d32; margin-top:10px; }
+.cod-form { display:none; margin-top:15px; }
+.cod-form input { width:100%; margin-bottom:10px; }
+.cod-form button { background:#43a047; }
+.cod-form button:hover { background:#2e7d32; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div class="container" id="loginPage">
+  <h1>Login</h1>
+  <input type="text" id="username" placeholder="Username or Email">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- PRODUCT PAGE -->
+<div class="container" id="productPage" style="display:none;">
+  <h1>Naruto T-Shirt</h1>
+  <img src="https://upload.wikimedia.org/wikipedia/en/9/94/Naruto_Uzumaki.png" alt="Naruto T-Shirt" class="product-img">
+  
+  <p>
+    <span class="price">₹1200</span>
+    <span class="discount">₹650</span>
+  </p>
+
+  <div class="variants">
+    <label>Color: 
+      <select id="color">
+        <option>Orange</option>
+        <option>Black</option>
+      </select>
+    </label>
+    <label>Size: 
+      <select id="size">
+        <option>S</option>
+        <option>M</option>
+        <option>L</option>
+        <option>XL</option>
+      </select>
+    </label>
+  </div>
+
+  <button onclick="addToCart()">Add to Cart</button>
+  <button onclick="showCODForm()">Buy Now (COD)</button>
+  <button onclick="openWhatsApp()">Deal on WhatsApp</button>
+
+  <p class="offer" id="offer"></p>
+
+  <!-- COD Form -->
+  <div class="cod-form" id="codForm">
+    <h3>Cash on Delivery Details</h3>
+    <input type="text" id="codName" placeholder="Full Name">
+    <input type="email" id="codEmail" placeholder="Email">
+    <input type="text" id="codPhone" placeholder="Phone Number">
+    <input type="text" id="codAddress" placeholder="Address">
+    <button onclick="submitCOD()">Submit Order</button>
+  </div>
+</div>
+
+<script>
+const wpNumber = "917022406350";
+const email = "uzirfan01@gmail.com";
+
+function login(){
+  const user = document.getElementById('username').value;
+  const pass = document.getElementById('password').value;
+  if(user && pass){
+    alert('Login Successful!');
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('productPage').style.display = 'block';
+  } else {
+    alert('Please enter username and password.');
+  }
+}
+
+function addToCart(){
+  const color = document.getElementById('color').value;
+  const size = document.getElementById('size').value;
+  alert('Added to cart: Naruto T-Shirt - ' + color + ' - ' + size);
+}
+
+function showCODForm(){
+  document.getElementById('codForm').style.display = 'block';
+}
+
+function submitCOD(){
+  const name = document.getElementById('codName').value;
+  const mail = document.getElementById('codEmail').value;
+  const phone = document.getElementById('codPhone').value;
+  const address = document.getElementById('codAddress').value;
+  if(name && mail && phone && address){
+    alert(`Order submitted!\nDetails sent to WhatsApp and Email.`);
+    const product = `Naruto T-Shirt - ${document.getElementById('color').value} - ${document.getElementById('size').value}`;
+    const msg = `New COD Order:\nName: ${name}\nEmail: ${mail}\nPhone: ${phone}\nAddress: ${address}\nProduct: ${product}`;
+    window.open(`https://wa.me/${wpNumber}?text=${encodeURIComponent(msg)}`, "_blank");
+    console.log(`Email to: ${email}\n${msg}`);
+  } else {
+    alert('Please fill all fields.');
+  }
+}
+
+function openWhatsApp(){
+  const product = `Naruto T-Shirt - ${document.getElementById('color').value} - ${document.getElementById('size').value}`;
+  const msg = `I am interested in this product: ${product}`;
+  window.open(`https://wa.me/${wpNumber}?text=${encodeURIComponent(msg)}`, "_blank");
+}
+
+// Dynamic offer line
+function updateOffer(){
+  const now = new Date();
+  let deliveryDate = new Date();
+  deliveryDate.setDate(now.getDate() + 5);
+  const options = { day: 'numeric', month: 'short' };
+  document.getElementById('offer').innerText = 
+    `Order before 5:00 PM get 10% Off | Estimated delivery: ${deliveryDate.toLocaleDateString('en-US', options)}`;
+}
+
+updateOffer();
+</script>
+</body>
+  </html>
