@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NXTSOUL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --ink:#f5f5f5;
+    --paper:#0a0a0a;
+    --surface:#141414;
+    --line: rgba(245,245,245,0.09);
+    --accent:#c6ff3d;
+    --accent-ink:#0d0d0d;
+    --muted:#8a8a8a;
+    --glass-bg: rgba(20,20,20,0.5);
+    --glass-border: rgba(255,255,255,0.09);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.brand,.nav-label,.section-title{
+    font-family:'Space Grotesk', sans-serif;
+  }
+
+  /* ---------- WELCOME PAGE ---------- */
+  #welcome{
+    position:fixed; inset:0; z-index:500;
+    background:#0a0a0a;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; text-align:center;
+    padding:32px;
+  }
+  #welcome::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 30%, rgba(198,255,61,0.10), transparent 60%);
+  }
+  #welcome img{
+    width:64px; height:64px; border-radius:14px; margin-bottom:22px;
+    position:relative; z-index:1;
+  }
+  #welcome h1{
+    font-size:clamp(26px,6vw,38px); font-weight:700; color:var(--ink);
+    margin-bottom:14px; position:relative; z-index:1;
+  }
+  #welcome h1 span{ color:var(--accent); }
+  #welcome p{
+    color:var(--muted); font-size:14.5px; max-width:360px; line-height:1.6;
+    margin-bottom:30px; position:relative; z-index:1;
+  }
+  #welcome button{
+    background:var(--accent); color:var(--accent-ink); border:none;
+    padding:14px 30px; border-radius:14px; font-weight:700; font-size:14.5px; cursor:pointer;
+    font-family:'Space Grotesk'; position:relative; z-index:1;
+    transition:transform 0.15s ease;
+  }
+  #welcome button:hover{ transform:translateY(-2px); }
+  #app{ display:none; }
+
+  /* ---------- TOP GLASS BAR ---------- */
+  #topbar{
+    position:fixed; top:14px; left:50%; transform:translateX(-50%);
+    width:calc(100% - 28px); max-width:1180px;
+    z-index:100;
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:10px 14px;
+    background:var(--glass-bg);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border:1px solid var(--glass-border);
+    border-radius:18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  }
+  .left-group{ display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+  .brand-block{ display:flex; align-items:center; gap:9px; flex-shrink:0; order:-1; }
+  .left-group{ order:1; flex:0 0 auto; justify-content:flex-end; }
+  .brand-block img{ width:26px; height:26px; border-radius:6px; }
+  .brand{ font-weight:700; font-size:15px; letter-spacing:0.02em; color:var(--ink); }
+  .brand-accent{ color:var(--accent); }
+
+  .search-wrap{
+    width:210px;
+    flex:0 0 auto;
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:12px;
+    padding:8px 12px;
+    min-width:0;
+  }
+  .search-wrap input{
+    border:none; background:transparent; outline:none;
+    font-family:'Inter'; font-size:13.5px; width:100%; color:var(--ink);
+  }
+  .search-wrap input::placeholder{ color:var(--muted); }
+  .search-wrap svg{ flex-shrink:0; opacity:0.55; stroke:var(--ink);}
+
+  .icon-btn{
+    position:relative;
+    width:38px; height:38px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:11px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.09);
+    cursor:pointer;
+    transition:transform 0.15s ease, background 0.2s ease;
+  }
+  .icon-btn:hover{ background:rgba(255,255,255,0.14); transform:translateY(-1px); }
+  .icon-btn svg{ stroke:var(--ink); }
+  .cart-badge{
+    position:absolute; top:-5px; right:-5px;
+    background:var(--accent); color:var(--accent-ink);
+    font-size:9.5px; font-weight:700;
+    min-width:16px; height:16px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    padding:0 3px;
+  }
+
+  /* ---------- SIDE DRAWER (3-line menu) ---------- */
+  #overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.55);
+    backdrop-filter: blur(2px);
+    z-index:150; opacity:0; pointer-events:none; transition:opacity 0.25s ease;
+  }
+  #overlay.show{ opacity:1; pointer-events:auto; }
+  #drawer{
+    position:fixed; top:0; right:-320px; width:280px; height:100%;
+    background:rgba(18,18,18,0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-left:1px solid rgba(255,255,255,0.08);
+    z-index:151; transition:right 0.3s cubic-bezier(.4,0,.2,1);
+    padding:26px 22px;
+  }
+  #drawer.open{ right:0; }
+  #drawer h3{ font-size:14px; letter-spacing:0.08em; color:var(--muted); margin-bottom:18px; text-transform:uppercase;}
+  #drawer a{
+    display:block; padding:13px 4px; font-size:15.5px; font-weight:500;
+    color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line);
+  }
+  #drawer .close-drawer{
+    width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,0.07);
+    display:flex; align-items:center; justify-content:center; margin-bottom:20px; cursor:pointer;
+  }
+  #drawer .close-drawer svg{ stroke:var(--ink); }
+
+  /* ---------- CART DRAWER ---------- */
+  /* ---------- FULLPAGE OVERLAYS (cart, payment, settings subpages) ---------- */
+  .fullpage{
+    position:fixed; inset:0; z-index:300;
+    background:var(--paper);
+    transform:translateY(100%);
+    transition:transform 0.35s cubic-bezier(.4,0,.2,1);
+    overflow-y:auto;
+    padding:20px 20px 40px;
+    display:flex; flex-direction:column;
+  }
+  .fullpage.open{ transform:translateY(0); }
+  .fp-header{ display:flex; align-items:center; gap:14px; margin-bottom:22px; padding-top:6px; flex-shrink:0; }
+  .fp-back{
+    width:36px; height:36px; border-radius:11px; background:var(--surface);
+    border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+  }
+  .fp-back svg{ stroke:var(--ink); }
+  .fp-title{ font-size:18px; font-weight:700; color:var(--ink); }
+
+  .form-input{
+    width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--line);
+    border-radius:11px; padding:12px 14px; color:var(--ink); font-size:13.5px;
+    margin-bottom:12px; outline:none; font-family:'Inter';
+  }
+  .form-input::placeholder{ color:var(--muted); }
+  .form-label{ font-size:11.5px; color:var(--muted); font-weight:600; margin:2px 0 6px; text-transform:uppercase; letter-spacing:0.04em; }
+  .btn-primary{
+    width:100%; background:var(--accent); color:var(--accent-ink); border:none;
+    padding:13px; border-radius:11px; font-weight:700; font-size:14px; cursor:pointer;
+    font-family:'Space Grotesk'; margin-top:6px;
+  }
+  .list-entry{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin-bottom:10px; font-size:13.5px; color:var(--ink);
+  }
+  .list-entry .le-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+  .le-delete{
+    width:28px; height:28px; border-radius:8px; background:rgba(255,107,107,0.1);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+  }
+  .le-delete svg{ stroke:#ff6b6b; }
+
+  .pay-tabs{ display:flex; gap:10px; margin-bottom:20px; }
+  .pay-tab{
+    flex:1; text-align:center; padding:12px; border-radius:12px; border:1px solid var(--line);
+    background:var(--surface); cursor:pointer; font-weight:600; font-size:13.5px; color:var(--muted);
+  }
+  .pay-tab.active{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+
+  #cartItemsList{ display:flex; flex-direction:column; gap:12px; }
+  .cart-item{
+    display:flex; align-items:center; gap:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px;
+  }
+  .cart-item img{ width:46px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0; }
+  .cart-item .ci-info{ flex:1; min-width:0; }
+  .cart-item .ci-name{ font-size:13px; font-weight:600; color:var(--ink); }
+  .cart-item .ci-price{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .cart-item .ci-remove{
+    width:26px; height:26px; border-radius:8px; background:rgba(255,255,255,0.06);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+  }
+  .cart-item .ci-remove svg{ stroke:var(--muted); width:13px; height:13px; }
+  .cart-empty{ text-align:center; color:var(--muted); font-size:13.5px; margin-top:40px; }
+  #cartFooter{ border-top:1px solid var(--line); padding-top:16px; margin-top:14px; }
+  #cartTotalRow{ display:flex; justify-content:space-between; font-size:14.5px; font-weight:700; color:var(--ink); margin-bottom:12px; }
+  #checkoutBtn{
+    width:100%; background:var(--accent); color:var(--accent-ink); border:none;
+    padding:13px; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer;
+    font-family:'Space Grotesk';
+  }
+  #checkoutBtn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  /* ---------- LOGIN MODAL ---------- */
+  #loginModal{
+    position:fixed; inset:0; z-index:400;
+    background:#0a0a0a;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease;
+    padding:20px;
+  }
+  #loginModal::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 20%, rgba(198,255,61,0.09), transparent 60%);
+  }
+  #loginModal.show{ opacity:1; pointer-events:auto; }
+  .login-box{
+    width:100%; max-width:360px;
+    background:var(--surface); border:1px solid var(--line); border-radius:24px;
+    padding:36px 28px 30px; position:relative; z-index:1;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  }
+  .login-box .close-drawer{
+    position:absolute; top:18px; right:18px;
+    width:30px; height:30px; border-radius:9px; background:rgba(255,255,255,0.07);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .login-box .close-drawer svg{ stroke:var(--ink); width:13px; height:13px; }
+
+  .auth-brand{
+    text-align:center; font-family:'Space Grotesk'; font-weight:700;
+    font-size:15px; letter-spacing:0.06em; color:var(--ink); margin-bottom:22px;
+  }
+  .auth-brand span{ color:var(--accent); }
+
+  .auth-tabs{
+    display:flex; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px; margin-bottom:22px;
+  }
+  .auth-tab{
+    flex:1; text-align:center; padding:9px; border-radius:9px; cursor:pointer;
+    font-size:13px; font-weight:600; color:var(--muted); transition:all 0.2s ease;
+  }
+  .auth-tab.active{ background:var(--accent); color:var(--accent-ink); }
+
+  .login-box h3{ font-size:19px; margin-bottom:6px; color:var(--ink); font-weight:700; }
+  .login-box p{ font-size:13px; color:var(--muted); margin-bottom:22px; line-height:1.5; }
+
+  .input-field{ position:relative; margin-bottom:12px; }
+  .input-field svg{
+    position:absolute; left:14px; top:50%; transform:translateY(-50%);
+    stroke:var(--muted); pointer-events:none;
+  }
+  .login-box input{
+    width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--line);
+    border-radius:12px; padding:13px 14px 13px 40px; color:var(--ink); font-size:13.5px;
+    outline:none; font-family:'Inter'; transition:border-color 0.2s ease;
+  }
+  .login-box input:focus{ border-color:var(--accent); background:rgba(255,255,255,0.07); }
+  .login-box input::placeholder{ color:var(--muted); }
+  .login-box button{
+    width:100%; background:var(--accent); color:var(--accent-ink); border:none;
+    padding:14px; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer;
+    margin-top:8px; font-family:'Space Grotesk'; transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .login-box button:hover{ transform:translateY(-1px); box-shadow:0 8px 20px rgba(198,255,61,0.25); }
+  .login-box .login-note{ text-align:center; font-size:11.5px; color:var(--muted); margin-top:16px; }
+  .login-box .login-note a{ color:var(--accent); font-weight:600; text-decoration:none; cursor:pointer; }
+
+  .divider-row{ display:flex; align-items:center; gap:10px; margin:20px 0 14px; }
+  .divider-row .line{ flex:1; height:1px; background:var(--line); }
+  .divider-row span{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+
+  .skip-btn{
+    width:100%; background:transparent; color:var(--muted); border:1px solid var(--line);
+    padding:12px; border-radius:12px; font-weight:600; font-size:13px; cursor:pointer;
+    font-family:'Inter'; transition:all 0.2s ease;
+  }
+  .skip-btn:hover{ background:rgba(255,255,255,0.05); color:var(--ink); border-color:rgba(255,255,255,0.2); }
+
+  .google-btn{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:#1f1f1f; border:none; padding:12px; border-radius:12px;
+    font-weight:600; font-size:13.5px; cursor:pointer; font-family:'Inter';
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .google-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.25); }
+
+  /* ---------- BOTTOM GLASS NAV ---------- */
+  #bottombar{
+    position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+    z-index:100;
+    display:flex; gap:4px;
+    background:var(--glass-bg);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border:1px solid var(--glass-border);
+    border-radius:999px;
+    padding:5px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .nav-item{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:6px 24px; border-radius:999px; cursor:pointer;
+    transition:background 0.2s ease;
+  }
+  .nav-item svg{ opacity:0.55; stroke:var(--ink); transition:opacity 0.2s ease; width:16px; height:16px; }
+  .nav-label{ font-size:8.5px; color:var(--muted); font-weight:600; letter-spacing:0.02em; }
+  .nav-item.active{ background:var(--accent); }
+  .nav-item.active svg{ opacity:1; stroke:#0d0d0d; }
+  .nav-item.active .nav-label{ color:#0d0d0d; }
+
+  /* ---------- MAIN LAYOUT ---------- */
+  main{ padding:110px 24px 130px; max-width:1180px; margin:0 auto; }
+  .page{ display:none; animation:fadeIn 0.35s ease; }
+  .page.active{ display:block; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .hero{
+    background:var(--surface); color:var(--ink);
+    border:1px solid var(--line);
+    border-radius:22px; padding:42px 32px; margin-bottom:34px;
+    position:relative; overflow:hidden;
+  }
+  .hero::after{
+    content:""; position:absolute; right:-40px; top:-40px; width:220px; height:220px;
+    background:radial-gradient(circle, rgba(198,255,61,0.22), transparent 70%);
+  }
+  .hero .eyebrow{ color:var(--accent); font-size:12px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; }
+  .hero h1{ font-size:clamp(28px,5vw,44px); margin:10px 0 12px; font-weight:700; max-width:520px; line-height:1.05; color:var(--ink); }
+  .hero p{ color:var(--muted); max-width:420px; font-size:14.5px; margin-bottom:20px; }
+  .hero button{
+    background:var(--accent); color:var(--accent-ink); border:none;
+    padding:12px 22px; border-radius:12px; font-weight:700; font-size:13.5px; cursor:pointer;
+    font-family:'Space Grotesk';
+  }
+
+  .section-title{ font-size:19px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; color:var(--ink); }
+  .section-title span.tag{ font-size:11px; font-weight:600; color:var(--muted); background:rgba(255,255,255,0.06); padding:5px 10px; border-radius:8px; }
+
+  .grid{
+    display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:36px;
+  }
+  .card{
+    border:1px solid var(--line); border-radius:13px; overflow:hidden; background:var(--surface);
+    transition:transform 0.2s ease, box-shadow 0.2s ease; cursor:pointer;
+  }
+  .card:hover{ transform:translateY(-3px); box-shadow:0 12px 24px rgba(0,0,0,0.4); }
+  .card .img-wrap{ aspect-ratio:4/5; overflow:hidden; background:#1c1c1c; position:relative; }
+  .card img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.4s ease; }
+  .card:hover img{ transform:scale(1.06); }
+  .card .badge{
+    position:absolute; top:7px; left:7px; background:var(--accent); color:var(--accent-ink);
+    font-size:8.5px; font-weight:700; padding:3px 6px; border-radius:6px; text-transform:uppercase;
+  }
+  .card .info{ padding:9px 10px 10px; }
+  .card .cat{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; font-weight:600;}
+  .card .name{ font-size:12px; font-weight:600; margin:3px 0 6px; color:var(--ink); line-height:1.25; }
+  .card .row{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .card .price{ font-weight:700; font-size:12.5px; color:var(--ink); }
+  .card .add-btn{
+    width:26px; height:26px; border-radius:8px; border:1px solid var(--line);
+    background:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition:background 0.15s ease; flex-shrink:0;
+  }
+  .card .add-btn svg{ stroke:var(--ink); width:12px; height:12px; }
+  .card .add-btn:hover{ background:var(--accent); }
+  .card .add-btn:hover svg{ stroke:#0d0d0d; }
+  .card .buy-btn{
+    width:100%; margin-top:7px; background:var(--accent); color:var(--accent-ink);
+    border:none; padding:7px; border-radius:8px; font-weight:700; font-size:11px;
+    cursor:pointer; font-family:'Space Grotesk';
+  }
+
+  /* orders / settings placeholder pages */
+  .empty-state{
+    text-align:center; padding:80px 20px; color:var(--muted);
+  }
+  .empty-state .icon-circle{
+    width:64px; height:64px; border-radius:50%; background:var(--surface);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 16px;
+  }
+  .empty-state .icon-circle svg{ stroke:var(--ink); }
+  .empty-state h3{ color:var(--ink); font-size:16px; margin-bottom:6px; }
+  .empty-state p{ font-size:13.5px; }
+
+  /* ---------- SETTINGS / PROFILE ---------- */
+  .profile-card{
+    display:flex; align-items:center; gap:16px;
+    background:var(--surface); border:1px solid var(--line); border-radius:18px;
+    padding:20px; margin-bottom:28px; max-width:480px;
+  }
+  .profile-avatar{
+    width:58px; height:58px; border-radius:50%; flex-shrink:0;
+    background:var(--accent); color:#0d0d0d; font-weight:700; font-size:20px;
+    display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk';
+  }
+  .profile-info h3{ font-size:16px; margin-bottom:3px; color:var(--ink); }
+  .profile-info p{ font-size:12.5px; color:var(--muted); }
+  .profile-edit{
+    margin-left:auto; font-size:12px; font-weight:600; color:var(--ink);
+    background:rgba(255,255,255,0.07); border:1px solid var(--line);
+    padding:8px 14px; border-radius:10px; cursor:pointer; flex-shrink:0;
+  }
+  .settings-group-label{
+    font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted);
+    font-weight:700; margin:22px 0 4px;
+  }
+  .settings-list{ max-width:480px; }
+  .settings-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 4px; border-bottom:1px solid var(--line); font-size:14.5px; font-weight:500;
+    color:var(--ink);
+  }
+  .settings-row .row-left{ display:flex; align-items:center; gap:12px; }
+  .settings-row svg{ stroke:var(--muted); flex-shrink:0; }
+  .settings-row .chevron{ opacity:0.5; }
+  .toggle{
+    width:40px; height:23px; border-radius:20px; background:rgba(255,255,255,0.12);
+    position:relative; cursor:pointer; transition:background 0.2s ease; flex-shrink:0;
+  }
+  .toggle.on{ background:var(--accent); }
+  .toggle::after{
+    content:""; position:absolute; top:2.5px; left:2.5px; width:18px; height:18px; border-radius:50%;
+    background:#fff; transition:left 0.2s ease;
+  }
+  .toggle.on::after{ left:19.5px; background:#0d0d0d; }
+
+  @media (max-width:640px){
+    .search-wrap{ width:120px; }
+    .search-wrap input{ font-size:12.5px; }
+    .brand .brand-text{ display:none; }
+    #topbar{ gap:8px; padding:9px 10px; }
+    main{ padding:100px 16px 120px; }
+  }
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <div id="welcome">
+    <img src="data:image/jpeg;base64,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" alt="logo">
+    <h1>Welcome to NXT<span>SOUL</span></h1>
+    <p>Ek chota sa streetwear clothing brand — sharp cuts, comfy fabric, zero noise. Apna fit dhoondo aur style karo.</p>
+    <button id="getStartedBtn">Get Started</button>
+  </div>
+
+  <div id="loginModal">
+    <div class="login-box">
+      <div class="close-drawer" id="closeLogin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+
+      <div class="auth-brand">NXT<span>SOUL</span></div>
+
+      <button type="button" id="googleSignInBtn" class="google-btn">
+        <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.57-5.17 3.57-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.08 7.95-2.91l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28v-3.1H1.27A12 12 0 0 0 0 12c0 1.94.46 3.77 1.27 5.38z"/><path fill="#EA4335" d="M12 4.75c1.76 0 3.35.6 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.27 6.62l4 3.1C6.22 6.86 8.87 4.75 12 4.75z"/></svg>
+        Continue with Google
+      </button>
+      <div class="divider-row"><div class="line"></div><span>or</span><div class="line"></div></div>
+
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLogin">Login</div>
+        <div class="auth-tab" id="tabSignup">Sign Up</div>
+      </div>
+
+      <div id="loginView">
+        <h3>Welcome back</h3>
+        <p>Login to your account to continue.</p>
+        <form id="loginForm">
+          <div class="input-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 4h16v16H4z" stroke="none"/><path d="M22 6l-10 7L2 6"/><path d="M2 6h20v12H2z"/></svg>
+            <input id="loginEmail" type="email" placeholder="Email address" required>
+          </div>
+          <div class="input-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input id="loginPassword" type="password" placeholder="Password" required>
+          </div>
+          <div id="loginError" style="color:#ff6b6b; font-size:12px; margin:-4px 0 10px; display:none;"></div>
+          <button type="button" id="loginBtn">Login &amp; Continue</button>
+        </form>
+      </div>
+
+      <div id="signupView" style="display:none;">
+        <h3>Create your account</h3>
+        <p>Signup takes 10 seconds, promise.</p>
+        <form id="signupForm">
+          <div class="input-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input id="signupName" type="text" placeholder="Full name" required>
+          </div>
+          <div class="input-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 4h16v16H4z" stroke="none"/><path d="M22 6l-10 7L2 6"/><path d="M2 6h20v12H2z"/></svg>
+            <input id="signupEmail" type="email" placeholder="Email address" required>
+          </div>
+          <div class="input-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input id="signupPassword" type="password" placeholder="Create password" required>
+          </div>
+          <div id="signupError" style="color:#ff6b6b; font-size:12px; margin:-4px 0 10px; display:none;"></div>
+          <button type="button" id="signupBtn">Sign Up &amp; Continue</button>
+        </form>
+      </div>
+
+      <div id="skipLoginWrap" style="display:none;">
+        <div class="divider-row"><div class="line"></div><span>or</span><div class="line"></div></div>
+        <button class="skip-btn" id="skipLoginBtn" type="button">Skip login for now</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+  <div id="topbar">
+    <div class="left-group">
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Search products...">
+      </div>
+      <div class="icon-btn" id="cartBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span class="cart-badge" id="cartCount">0</span>
+      </div>
+      <div class="icon-btn" id="menuBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </div>
+    </div>
+    <div class="brand-block">
+      <img src="data:image/jpeg;base64,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" alt="logo">
+      <span class="brand">NXT<span class="brand-accent">SOUL</span></span>
+    </div>
+  </div>
+
+  <div id="overlay"></div>
+  <div id="drawer">
+    <div class="close-drawer" id="closeDrawer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <h3>Menu</h3>
+    <a href="#">New Arrivals</a>
+    <a href="#">Men</a>
+    <a href="#">Women</a>
+    <a href="#">Accessories</a>
+    <a href="#">Sale</a>
+    <a href="#">About NXTSOUL</a>
+    <a href="#">Contact</a>
+  </div>
+
+  <main>
+    <!-- HOME -->
+    <section class="page active" id="page-home">
+      <div class="hero">
+        <div class="eyebrow">New Drop · FW26</div>
+        <h1>Wear the edge.<br>Own the fit.</h1>
+        <p>Street-cut essentials built for movement. Sharp silhouettes, soft fabric, zero noise.</p>
+        <button onclick="goPage('products')">Shop the drop</button>
+      </div>
+
+      <div class="section-title">Trending now <span class="tag">8 items</span></div>
+      <div class="grid" id="homeGrid"></div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="page" id="page-products">
+      <div class="section-title">All Products <span class="tag" id="productCountTag">8 items</span></div>
+      <div class="grid" id="productsGrid"></div>
+    </section>
+
+    <!-- ORDERS -->
+    <section class="page" id="page-orders">
+      <div class="section-title">Your Orders</div>
+      <div class="empty-state">
+        <div class="icon-circle">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="1.6"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+        </div>
+        <h3>No orders yet</h3>
+        <p>Items you buy will show up here for easy tracking.</p>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="page" id="page-settings">
+      <div class="section-title">Settings</div>
+
+      <div class="profile-card">
+        <div class="profile-avatar">R</div>
+        <div class="profile-info">
+          <h3>Rohan Sharma</h3>
+          <p>rohan.sharma@email.com</p>
+        </div>
+        <div class="profile-edit">Edit</div>
+      </div>
+
+      <div class="settings-group-label">Account</div>
+      <div class="settings-list">
+        <div class="settings-row" id="rowPersonalInfo" style="cursor:pointer;">
+          <div class="row-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Personal information
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row" id="rowPaymentMethods" style="cursor:pointer;">
+          <div class="row-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Payment methods
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row" id="rowAddresses" style="cursor:pointer;">
+          <div class="row-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Saved addresses
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row" id="rowChangePassword" style="cursor:pointer;">
+          <div class="row-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Change password
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
+      <div class="settings-group-label">Preferences</div>
+      <div class="settings-list">
+        <div class="settings-row">Push notifications <div class="toggle on" data-toggle></div></div>
+        <div class="settings-row">Order email updates <div class="toggle on" data-toggle></div></div>
+        <div class="settings-row">Dark mode <div class="toggle on" data-toggle></div></div>
+        <div class="settings-row">Save card for later <div class="toggle" data-toggle></div></div>
+        <div class="settings-row">Location for delivery <div class="toggle on" data-toggle></div></div>
+      </div>
+
+      <div class="settings-group-label">Support</div>
+      <div class="settings-list">
+        <div class="settings-row">
+          <div class="row-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Help center
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row" id="rowLogout">
+          <div class="row-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Log out
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="personalInfoPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closePersonalInfo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Personal Information</div>
+    </div>
+    <form id="personalInfoForm">
+      <div class="form-label">Full name</div>
+      <input class="form-input" id="piName" type="text" value="Rohan Sharma" required>
+      <div class="form-label">Email</div>
+      <input class="form-input" id="piEmail" type="email" value="rohan.sharma@email.com" required>
+      <div class="form-label">Phone number</div>
+      <input class="form-input" id="piPhone" type="tel" placeholder="10-digit mobile number">
+      <button class="btn-primary" type="submit">Save Changes</button>
+    </form>
+  </div>
+
+  <div id="paymentMethodsPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closePaymentMethods">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Payment Methods</div>
+    </div>
+    <div id="cardsList">
+      <div class="list-entry" style="display:flex; align-items:center; justify-content:space-between;">
+        <div>•••• •••• •••• 4821 <div class="le-sub">Visa · expires 09/28</div></div>
+        <div class="le-delete" onclick="this.closest('.list-entry').remove()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </div>
+      </div>
+    </div>
+    <form id="addCardForm" style="margin-top:16px;">
+      <div class="form-label">Card number</div>
+      <input class="form-input" type="text" placeholder="1234 5678 9012 3456" maxlength="19" required>
+      <div class="form-label">Name on card</div>
+      <input class="form-input" type="text" placeholder="Name on card" required>
+      <div class="form-label">Expiry</div>
+      <input class="form-input" type="text" placeholder="MM/YY" required>
+      <button class="btn-primary" type="submit">Add Card</button>
+    </form>
+  </div>
+
+  <div id="addressesPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closeAddresses">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Saved Addresses</div>
+    </div>
+    <div id="addressesList">
+      <div class="list-entry" style="display:flex; align-items:center; justify-content:space-between;">
+        <div>Home <div class="le-sub">221B, Baker Street, Mumbai — 400001</div></div>
+        <div class="le-delete" onclick="this.closest('.list-entry').remove()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </div>
+      </div>
+    </div>
+    <form id="addAddressForm" style="margin-top:16px;">
+      <div class="form-label">Label</div>
+      <input class="form-input" type="text" placeholder="Home / Work / Other" required>
+      <div class="form-label">Address</div>
+      <input class="form-input" type="text" placeholder="House no, street, area" required>
+      <div class="form-label">City</div>
+      <input class="form-input" type="text" placeholder="City" required>
+      <div class="form-label">Pincode</div>
+      <input class="form-input" type="text" placeholder="6-digit pincode" required>
+      <button class="btn-primary" type="submit">Save Address</button>
+    </form>
+  </div>
+
+  <div id="changePasswordPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closeChangePassword">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Change Password</div>
+    </div>
+    <div id="cpLoggedOutMsg" style="display:none;">
+      <p style="color:var(--muted); font-size:13.5px; margin-bottom:16px;">Please login to change your password.</p>
+      <button class="btn-primary" id="cpLoginBtn" type="button">Login</button>
+    </div>
+    <form id="changePasswordForm">
+      <div class="form-label">Current password</div>
+      <input class="form-input" id="cpCurrent" type="password" placeholder="Current password" required>
+      <div class="form-label">New password</div>
+      <input class="form-input" id="cpNew" type="password" placeholder="New password" required>
+      <div class="form-label">Confirm new password</div>
+      <input class="form-input" id="cpConfirm" type="password" placeholder="Confirm new password" required>
+      <div id="cpError" style="color:#ff6b6b; font-size:12px; margin:-4px 0 10px; display:none;"></div>
+      <div id="cpSuccess" style="color:var(--accent); font-size:12px; margin:-4px 0 10px; display:none;"></div>
+      <button class="btn-primary" type="submit">Update Password</button>
+    </form>
+  </div>
+
+  <div id="cartDrawer" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closeCart">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Your Cart</div>
+    </div>
+    <div id="cartItemsList"></div>
+    <div id="cartFooter">
+      <div id="cartTotalRow"><span>Total</span><span id="cartTotal">₹0</span></div>
+      <button id="checkoutBtn" disabled>Proceed to Buy</button>
+    </div>
+  </div>
+
+  <div id="paymentPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closePayment">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Payment</div>
+    </div>
+    <div id="payTotalRow" style="font-size:14.5px;color:var(--muted);margin-bottom:18px;">Amount to pay: <strong style="color:var(--ink);" id="payAmount">₹0</strong></div>
+    <div class="pay-tabs">
+      <div class="pay-tab active" data-pay="upi">UPI</div>
+      <div class="pay-tab" data-pay="cod">Cash on Delivery</div>
+    </div>
+
+    <form id="upiForm">
+      <div class="form-label">UPI ID</div>
+      <input class="form-input" type="text" placeholder="yourname@upi" required>
+      <button class="btn-primary" type="submit">Pay Now</button>
+    </form>
+
+    <form id="codForm" style="display:none;">
+      <div class="form-label">Full name</div>
+      <input class="form-input" type="text" placeholder="Full name" required>
+      <div class="form-label">Phone number</div>
+      <input class="form-input" type="tel" placeholder="10-digit mobile number" required>
+      <div class="form-label">Delivery address</div>
+      <input class="form-input" type="text" placeholder="House no, street, area" required>
+      <div class="form-label">City</div>
+      <input class="form-input" type="text" placeholder="City" required>
+      <div class="form-label">Pincode</div>
+      <input class="form-input" type="text" placeholder="6-digit pincode" required>
+      <button class="btn-primary" type="submit">Place COD Order</button>
+    </form>
+  </div>
+
+  <div id="bottombar">
+    <div class="nav-item active" data-page="home">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="nav-label">Home</span>
+    </div>
+    <div class="nav-item" data-page="products">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>
+      <span class="nav-label">Products</span>
+    </div>
+    <div class="nav-item" data-page="orders">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/></svg>
+      <span class="nav-label">Orders</span>
+    </div>
+    <div class="nav-item" data-page="settings">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="nav-label">Settings</span>
+    </div>
+  </div>
+  </div><!-- /#app -->
+
+<script>
+  const products = [
+    { name:"Onyx Bomber Jacket", cat:"Outerwear", price:4299, seed:"nxt1", badge:"New" },
+    { name:"Slate Oversized Tee", cat:"Tops", price:999, seed:"nxt2" },
+    { name:"Cargo Utility Pants", cat:"Bottoms", price:2199, seed:"nxt3", badge:"Hot" },
+    { name:"Mono Hoodie", cat:"Tops", price:1899, seed:"nxt4" },
+    { name:"Track Jacket 01", cat:"Outerwear", price:2799, seed:"nxt5" },
+    { name:"Ash Denim Jeans", cat:"Bottoms", price:2499, seed:"nxt6" },
+    { name:"Ribbed Beanie", cat:"Accessories", price:499, seed:"nxt7" },
+    { name:"Combat Sneakers", cat:"Footwear", price:3499, seed:"nxt8", badge:"New" },
+  ];
+
+  function cardHTML(p, idx){
+    return `
+      <div class="card">
+        <div class="img-wrap">
+          ${p.badge ? `<span class="badge">${p.badge}</span>` : ""}
+          <img src="https://picsum.photos/seed/${p.seed}/400/500" alt="${p.name}">
+        </div>
+        <div class="info">
+          <div class="cat">${p.cat}</div>
+          <div class="name">${p.name}</div>
+          <div class="row">
+            <div class="price">₹${p.price}</div>
+            <div class="add-btn" onclick="addToCart(event,'${p.seed}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+          </div>
+          <button class="buy-btn" onclick="buyNow(event,'${p.seed}')">Buy Now</button>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('homeGrid').innerHTML = products.slice(0,4).map(cardHTML).join("");
+  document.getElementById('productsGrid').innerHTML = products.map(cardHTML).join("");
+
+  let cartItems = [];
+  function addToCart(e, seed){
+    e.stopPropagation();
+    const p = products.find(x=>x.seed===seed);
+    cartItems.push(p);
+    renderCart();
+  }
+  function removeFromCart(idx){
+    cartItems.splice(idx,1);
+    renderCart();
+  }
+  function renderCart(){
+    document.getElementById('cartCount').textContent = cartItems.length;
+    const list = document.getElementById('cartItemsList');
+    if(cartItems.length===0){
+      list.innerHTML = `<div class="cart-empty">Your cart is empty.<br>Add some fits to get started.</div>`;
+    } else {
+      list.innerHTML = cartItems.map((p,i)=>`
+        <div class="cart-item">
+          <img src="https://picsum.photos/seed/${p.seed}/100/120" alt="${p.name}">
+          <div class="ci-info">
+            <div class="ci-name">${p.name}</div>
+            <div class="ci-price">₹${p.price}</div>
+          </div>
+          <div class="ci-remove" onclick="removeFromCart(${i})">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>`).join("");
+    }
+    const total = cartItems.reduce((s,p)=>s+p.price,0);
+    document.getElementById('cartTotal').textContent = "₹"+total;
+    document.getElementById('checkoutBtn').disabled = cartItems.length===0;
+  }
+  renderCart();
+
+  // checkout -> require login -> payment page
+  let isLoggedIn = false;
+  let currentUser = null;
+  let pendingAmount = 0;
+  let loginContext = 'initial'; // 'initial' (first-run) or 'checkout'
+  const loginModal = document.getElementById('loginModal');
+  const paymentPage = document.getElementById('paymentPage');
+  const skipLoginWrap = document.getElementById('skipLoginWrap');
+
+  // welcome -> login page (with skip option)
+  document.getElementById('getStartedBtn').onclick = ()=>{
+    document.getElementById('welcome').style.display='none';
+    loginContext = 'initial';
+    skipLoginWrap.style.display = 'block';
+    loginModal.classList.add('show');
+  };
+
+  document.getElementById('skipLoginBtn').onclick = ()=>{
+    loginModal.classList.remove('show');
+    document.getElementById('app').style.display='block';
+  };
+
+  // cart drawer open/close (fullpage)
+  const cartDrawer = document.getElementById('cartDrawer');
+  document.getElementById('cartBtn').onclick = ()=>{ cartDrawer.classList.add('open'); };
+  document.getElementById('closeCart').onclick = ()=>{ cartDrawer.classList.remove('open'); };
+
+  document.getElementById('checkoutBtn').onclick = ()=>{
+    pendingAmount = cartItems.reduce((s,p)=>s+p.price,0);
+    if(isLoggedIn){ openPayment(pendingAmount); } else {
+      loginContext = 'checkout';
+      skipLoginWrap.style.display = 'none';
+      loginModal.classList.add('show');
+    }
+  };
+  document.getElementById('closeLogin').onclick = ()=>{
+    loginModal.classList.remove('show');
+    // if this was the mandatory first-run screen and they close it without acting, treat as skip
+    if(loginContext === 'initial'){ document.getElementById('app').style.display='block'; }
+  };
+
+  function buyNow(e, seed){
+    e.stopPropagation();
+    const p = products.find(x=>x.seed===seed);
+    pendingAmount = p.price;
+    if(isLoggedIn){ openPayment(pendingAmount); } else {
+      loginContext = 'checkout';
+      skipLoginWrap.style.display = 'none';
+      loginModal.classList.add('show');
+    }
+  }
+
+  function openPayment(amount){
+    document.getElementById('payAmount').textContent = "₹"+amount;
+    cartDrawer.classList.remove('open');
+    paymentPage.classList.add('open');
+  }
+  document.getElementById('closePayment').onclick = ()=>{ paymentPage.classList.remove('open'); };
+
+  // called after a successful login or signup, from either context
+  function afterAuthSuccess(){
+    loginModal.classList.remove('show');
+    if(loginContext === 'initial'){
+      document.getElementById('app').style.display='block';
+    } else if(loginContext === 'account'){
+      document.getElementById('changePasswordPage').classList.add('open');
+      document.getElementById('cpLoggedOutMsg').style.display='none';
+      document.getElementById('changePasswordForm').style.display='block';
+    } else {
+      openPayment(pendingAmount);
+    }
+  }
+
+  // login / signup tab toggle
+  document.getElementById('tabSignup').onclick = ()=>{
+    document.getElementById('tabSignup').classList.add('active');
+    document.getElementById('tabLogin').classList.remove('active');
+    document.getElementById('loginView').style.display='none';
+    document.getElementById('signupView').style.display='block';
+    document.getElementById('loginError').style.display='none';
+  };
+  document.getElementById('tabLogin').onclick = ()=>{
+    document.getElementById('tabLogin').classList.add('active');
+    document.getElementById('tabSignup').classList.remove('active');
+    document.getElementById('signupView').style.display='none';
+    document.getElementById('loginView').style.display='block';
+    document.getElementById('signupError').style.display='none';
+  };
+
+  // =========================================================
+  // FIREBASE — real auth + database.
+  // 1) Go to https://console.firebase.google.com -> create a free project.
+  // 2) Build > Authentication > Sign-in method: enable "Email/Password" and "Google".
+  // 3) Build > Firestore Database > Create database (start in test mode).
+  // 4) Project settings > your apps > Web app > copy the config below.
+  // =========================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbRrMAolK5YEsOaGS2_4WlBPQ3txEgyFg",
+    authDomain: "nxtsoul-28737.firebaseapp.com",
+    projectId: "nxtsoul-28737",
+    storageBucket: "nxtsoul-28737.firebasestorage.app",
+    messagingSenderId: "511661542748",
+    appId: "1:511661542748:web:eef8101b9a57384ed64599",
+    measurementId: "G-K53K8W2FE7"
+  };
+  let firebaseReady = false;
+  let auth, db;
+  try{
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    firebaseReady = true;
+  } catch(err){
+    console.warn("Firebase not configured yet — paste your config in firebaseConfig. Falling back to demo mode.", err);
+  }
+
+  // demo-mode fallback so the site still works before you paste real Firebase keys
+  const demoAccounts = [{ name:"Demo User", email:"demo@nxtsoul.com", password:"demo123" }];
+
+  function doLogin(){
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const pass = document.getElementById('loginPassword').value;
+    const errBox = document.getElementById('loginError');
+    if(!email || !pass){ errBox.textContent = "Please fill in both fields."; errBox.style.display='block'; return; }
+    errBox.style.display='none';
+
+    if(firebaseReady){
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(()=>{ document.getElementById('loginForm').reset(); })
+        .catch(err=>{ errBox.textContent = friendlyAuthError(err); errBox.style.display='block'; });
+    } else {
+      const account = demoAccounts.find(a => a.email===email && a.password===pass);
+      if(!account){
+        errBox.textContent = demoAccounts.some(a=>a.email===email) ? "Wrong password. Try again." : "No account found. Please sign up first.";
+        errBox.style.display='block';
+        return;
+      }
+      currentUser = account; isLoggedIn = true;
+      document.getElementById('loginForm').reset();
+      afterAuthSuccess();
+    }
+  }
+
+  function doSignup(){
+    const name = document.getElementById('signupName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+    const pass = document.getElementById('signupPassword').value;
+    const errBox = document.getElementById('signupError');
+    if(!name || !email || !pass){ errBox.textContent = "Please fill in all fields."; errBox.style.display='block'; return; }
+    errBox.style.display='none';
+
+    if(firebaseReady){
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then(cred => {
+          return cred.user.updateProfile({ displayName: name }).then(()=>
+            db.collection('users').doc(cred.user.uid).set({ name, email, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+          );
+        })
+        .then(()=>{ document.getElementById('signupForm').reset(); })
+        .catch(err=>{ errBox.textContent = friendlyAuthError(err); errBox.style.display='block'; });
+    } else {
+      if(demoAccounts.some(a => a.email===email)){
+        errBox.textContent = "An account with this email already exists. Please login instead.";
+        errBox.style.display='block';
+        return;
+      }
+      const account = { name, email, password: pass };
+      demoAccounts.push(account);
+      currentUser = account; isLoggedIn = true;
+      document.querySelector('.profile-info h3').textContent = name;
+      document.querySelector('.profile-info p').textContent = email;
+      document.querySelector('.profile-avatar').textContent = name.charAt(0).toUpperCase() || 'R';
+      document.getElementById('signupForm').reset();
+      afterAuthSuccess();
+    }
+  }
+
+  function googleSignIn(){
+    if(!firebaseReady){
+      alert("Google sign-in needs Firebase set up first — paste your config into firebaseConfig in the code.");
+      return;
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .then(result => {
+        const user = result.user;
+        return db.collection('users').doc(user.uid).set({
+          name: user.displayName || '', email: user.email, photo: user.photoURL || ''
+        }, { merge: true });
+      })
+      .catch(err => {
+        const errBox = document.getElementById('loginError');
+        errBox.textContent = friendlyAuthError(err);
+        errBox.style.display='block';
+      });
+  }
+  document.getElementById('googleSignInBtn').addEventListener('click', googleSignIn);
+
+  function friendlyAuthError(err){
+    const map = {
+      'auth/email-already-in-use': "An account with this email already exists. Please login instead.",
+      'auth/invalid-email': "That email address doesn't look right.",
+      'auth/weak-password': "Password should be at least 6 characters.",
+      'auth/user-not-found': "No account found with this email. Please sign up first.",
+      'auth/wrong-password': "Wrong password. Try again.",
+      'auth/popup-closed-by-user': "Google sign-in was closed before finishing.",
+      'auth/api-key-not-valid.-please-pass-a-valid-api-key.': "Firebase isn't configured yet — paste your project keys into firebaseConfig."
+    };
+    return map[err.code] || err.message || "Something went wrong, please try again.";
+  }
+
+  // real-time auth state — keeps user logged in across page refreshes,
+  // and keeps profile/UI in sync with whichever device/tab they're on
+  if(firebaseReady){
+    auth.onAuthStateChanged(user => {
+      if(user){
+        isLoggedIn = true;
+        currentUser = { uid: user.uid, name: user.displayName || '', email: user.email, password: null };
+        db.collection('users').doc(user.uid).get().then(doc=>{
+          const data = doc.exists ? doc.data() : {};
+          const name = data.name || user.displayName || 'NXTSOUL User';
+          document.querySelector('.profile-info h3').textContent = name;
+          document.querySelector('.profile-info p').textContent = user.email;
+          document.querySelector('.profile-avatar').textContent = name.charAt(0).toUpperCase() || 'N';
+        });
+        if(loginModal.classList.contains('show')){ afterAuthSuccess(); }
+      } else {
+        isLoggedIn = false;
+        currentUser = null;
+      }
+    });
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('signupBtn').addEventListener('click', doSignup);
+
+  // payment tabs
+  document.querySelectorAll('.pay-tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('.pay-tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('upiForm').style.display = tab.dataset.pay==='upi' ? 'block':'none';
+      document.getElementById('codForm').style.display = tab.dataset.pay==='cod' ? 'block':'none';
+    });
+  });
+
+  function completeOrder(){
+    if(firebaseReady && auth.currentUser){
+      db.collection('orders').add({
+        uid: auth.currentUser.uid,
+        amount: pendingAmount,
+        placedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.warn('Order save failed', err));
+    }
+    paymentPage.classList.remove('open');
+    cartItems = [];
+    renderCart();
+    goPage('orders');
+    alert('Order placed successfully! 🎉');
+  }
+  document.getElementById('upiForm').addEventListener('submit', (e)=>{ e.preventDefault(); completeOrder(); });
+  document.getElementById('codForm').addEventListener('submit', (e)=>{ e.preventDefault(); completeOrder(); });
+
+  document.getElementById('rowLogout').onclick = ()=>{
+    if(firebaseReady && auth.currentUser){ auth.signOut(); }
+    isLoggedIn = false;
+    currentUser = null;
+    goPage('home');
+  };
+
+  // settings subpages
+  function wireSubpage(rowId, pageId, closeId){
+    document.getElementById(rowId).onclick = ()=> document.getElementById(pageId).classList.add('open');
+    document.getElementById(closeId).onclick = ()=> document.getElementById(pageId).classList.remove('open');
+  }
+  wireSubpage('rowPersonalInfo','personalInfoPage','closePersonalInfo');
+  wireSubpage('rowPaymentMethods','paymentMethodsPage','closePaymentMethods');
+  wireSubpage('rowAddresses','addressesPage','closeAddresses');
+  document.getElementById('closeChangePassword').onclick = ()=> document.getElementById('changePasswordPage').classList.remove('open');
+
+  document.getElementById('personalInfoForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('piName').value;
+    const email = document.getElementById('piEmail').value;
+    const phone = document.getElementById('piPhone').value;
+    document.querySelector('.profile-info h3').textContent = name;
+    document.querySelector('.profile-info p').textContent = email;
+    document.querySelector('.profile-avatar').textContent = name.trim().charAt(0).toUpperCase() || 'R';
+    if(currentUser){ currentUser.name = name; currentUser.email = email; }
+    if(firebaseReady && auth.currentUser){
+      db.collection('users').doc(auth.currentUser.uid).set({ name, email, phone }, { merge: true })
+        .catch(err => console.warn('Profile save failed', err));
+    }
+    document.getElementById('personalInfoPage').classList.remove('open');
+  });
+
+  function deleteBtnHTML(){
+    return `<div class="le-delete" onclick="this.closest('.list-entry').remove()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </div>`;
+  }
+
+  document.getElementById('addCardForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const inputs = e.target.querySelectorAll('input');
+    const num = inputs[0].value.replace(/\s/g,'');
+    const last4 = num.slice(-4) || '0000';
+    const list = document.getElementById('cardsList');
+    list.insertAdjacentHTML('beforeend', `<div class="list-entry" style="display:flex;align-items:center;justify-content:space-between;"><div>•••• •••• •••• ${last4} <div class="le-sub">${inputs[1].value} · expires ${inputs[2].value}</div></div>${deleteBtnHTML()}</div>`);
+    e.target.reset();
+  });
+
+  document.getElementById('addAddressForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const inputs = e.target.querySelectorAll('input');
+    const list = document.getElementById('addressesList');
+    list.insertAdjacentHTML('beforeend', `<div class="list-entry" style="display:flex;align-items:center;justify-content:space-between;"><div>${inputs[0].value} <div class="le-sub">${inputs[1].value}, ${inputs[2].value} — ${inputs[3].value}</div></div>${deleteBtnHTML()}</div>`);
+    e.target.reset();
+  });
+
+  // change password
+  document.getElementById('rowChangePassword').onclick = ()=>{
+    document.getElementById('cpError').style.display='none';
+    document.getElementById('cpSuccess').style.display='none';
+    if(!isLoggedIn || !currentUser){
+      document.getElementById('cpLoggedOutMsg').style.display='block';
+      document.getElementById('changePasswordForm').style.display='none';
+    } else {
+      document.getElementById('cpLoggedOutMsg').style.display='none';
+      document.getElementById('changePasswordForm').style.display='block';
+    }
+    document.getElementById('changePasswordPage').classList.add('open');
+  };
+  document.getElementById('cpLoginBtn').onclick = ()=>{
+    loginContext = 'account';
+    skipLoginWrap.style.display = 'none';
+    loginModal.classList.add('show');
+  };
+  document.getElementById('changePasswordForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const errBox = document.getElementById('cpError');
+    const okBox = document.getElementById('cpSuccess');
+    errBox.style.display='none'; okBox.style.display='none';
+    const cur = document.getElementById('cpCurrent').value;
+    const next = document.getElementById('cpNew').value;
+    const confirm = document.getElementById('cpConfirm').value;
+    if(next.length < 6){
+      errBox.textContent = "New password must be at least 6 characters.";
+      errBox.style.display='block';
+      return;
+    }
+    if(next !== confirm){
+      errBox.textContent = "New password and confirmation don't match.";
+      errBox.style.display='block';
+      return;
+    }
+    if(firebaseReady && auth.currentUser){
+      const cred = firebase.auth.EmailAuthProvider.credential(auth.currentUser.email, cur);
+      auth.currentUser.reauthenticateWithCredential(cred)
+        .then(()=> auth.currentUser.updatePassword(next))
+        .then(()=>{
+          okBox.textContent = "Password updated successfully!";
+          okBox.style.display='block';
+          e.target.reset();
+        })
+        .catch(err=>{ errBox.textContent = friendlyAuthError(err); errBox.style.display='block'; });
+    } else {
+      if(cur !== currentUser.password){
+        errBox.textContent = "Current password is incorrect.";
+        errBox.style.display='block';
+        return;
+      }
+      currentUser.password = next;
+      okBox.textContent = "Password updated successfully!";
+      okBox.style.display='block';
+      e.target.reset();
+    }
+  });
+
+  // bottom nav paging
+  const navItems = document.querySelectorAll('.nav-item');
+  function goPage(name){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    navItems.forEach(n=>n.classList.toggle('active', n.dataset.page===name));
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+  navItems.forEach(item=>{
+    item.addEventListener('click', ()=> goPage(item.dataset.page));
+  });
+
+  // drawer
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('overlay');
+  document.getElementById('menuBtn').onclick = ()=>{ drawer.classList.add('open'); overlay.classList.add('show'); };
+  document.getElementById('closeDrawer').onclick = ()=>{ drawer.classList.remove('open'); overlay.classList.remove('show'); };
+  overlay.onclick = ()=>{ drawer.classList.remove('open'); overlay.classList.remove('show'); };
+
+  // search filter (works on products page)
+  document.getElementById('searchInput').addEventListener('input', (e)=>{
+    const q = e.target.value.toLowerCase();
+    goPage('products');
+    const filtered = products.filter(p => p.name.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q));
+    document.getElementById('productsGrid').innerHTML = filtered.map(cardHTML).join("") || `<p style="color:#7a7a7a;padding:20px 0;">No products found.</p>`;
+    document.getElementById('productCountTag').textContent = filtered.length + " items";
+  });
+
+  // settings toggles
+  document.querySelectorAll('[data-toggle]').forEach(t=>{
+    t.addEventListener('click', ()=> t.classList.toggle('on'));
+  });
+
+</script>
+</body>
+</html>
