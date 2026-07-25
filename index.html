@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NXTSOUL</title>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
@@ -204,41 +205,44 @@
   .pay-tab.active{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
 
   /* ---------- PRODUCT DETAIL PAGE ---------- */
-  .pd-image-wrap{ width:100%; aspect-ratio:4/5; border-radius:18px; overflow:hidden; background:#1c1c1c; margin-bottom:12px; }
-  .pd-image-wrap img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .pd-thumbs{ display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; }
-  .pd-thumb{ width:56px; height:70px; border-radius:9px; overflow:hidden; flex-shrink:0; cursor:pointer; border:2px solid transparent; opacity:0.6; }
-  .pd-thumb.active{ border-color:var(--accent); opacity:1; }
-  .pd-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .pd-cat{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:600; }
-  .pd-name{ font-size:21px; font-weight:700; color:var(--ink); margin:5px 0 6px; }
-  .pd-rating{ font-size:13px; color:var(--accent); letter-spacing:1px; margin-bottom:10px; }
-  .pd-price{ font-size:19px; font-weight:700; color:var(--ink); margin-bottom:14px; }
-  .pd-desc{ font-size:13.5px; color:var(--muted); line-height:1.6; margin-bottom:20px; }
-  .size-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+  .pd-carousel{ width:100%; aspect-ratio:1/1; border-radius:16px; overflow:hidden; background:#1c1c1c; margin-bottom:8px; position:relative; }
+  .pd-carousel-track{ display:flex; width:100%; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .pd-carousel-track::-webkit-scrollbar{ display:none; }
+  .pd-carousel-track img{ flex:0 0 100%; width:100%; height:100%; object-fit:cover; scroll-snap-align:start; }
+  .pd-dots{ display:flex; gap:5px; justify-content:center; margin-bottom:14px; }
+  .pd-dot{ width:5px; height:5px; border-radius:50%; background:var(--line); }
+  .pd-dot.active{ background:var(--accent); width:14px; border-radius:3px; }
+  .pd-cat{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:600; }
+  .pd-name{ font-size:17px; font-weight:700; color:var(--ink); margin:4px 0 5px; }
+  .pd-rating{ font-size:12px; color:var(--accent); letter-spacing:1px; margin-bottom:8px; }
+  .pd-price{ font-size:16.5px; font-weight:700; color:var(--ink); margin-bottom:10px; }
+  .pd-color-row{ display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:12.5px; color:var(--ink); }
+  .pd-color-swatch{ width:16px; height:16px; border-radius:50%; border:1px solid var(--line); flex-shrink:0; }
+  .pd-desc{ font-size:12.5px; color:var(--muted); line-height:1.55; margin-bottom:16px; }
+  .size-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
   .size-btn{
-    padding:9px 16px; border-radius:10px; border:1px solid var(--line); background:var(--surface);
-    color:var(--ink); font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s ease;
+    padding:7px 13px; border-radius:9px; border:1px solid var(--line); background:var(--surface);
+    color:var(--ink); font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s ease;
   }
   .size-btn.active{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   .qty-stepper{
-    display:flex; align-items:center; gap:16px; margin-bottom:24px;
-    background:var(--surface); border:1px solid var(--line); border-radius:12px;
-    padding:8px 16px; width:fit-content;
+    display:flex; align-items:center; gap:14px; margin-bottom:18px;
+    background:var(--surface); border:1px solid var(--line); border-radius:11px;
+    padding:6px 14px; width:fit-content;
   }
   .qty-stepper button{
-    width:26px; height:26px; border-radius:8px; border:none; background:rgba(255,255,255,0.06);
-    color:var(--ink); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    width:23px; height:23px; border-radius:7px; border:none; background:rgba(255,255,255,0.06);
+    color:var(--ink); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
-  .qty-stepper span{ font-size:14px; font-weight:600; color:var(--ink); min-width:16px; text-align:center; }
-  .pd-actions{ display:flex; gap:10px; margin-top:auto; padding-top:6px; }
+  .qty-stepper span{ font-size:13px; font-weight:600; color:var(--ink); min-width:14px; text-align:center; }
+  .pd-actions{ display:flex; gap:9px; margin-top:auto; padding-top:4px; }
   .pd-add-btn{
     flex:1; background:var(--surface); color:var(--ink); border:1px solid var(--line);
-    padding:14px; border-radius:12px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:'Space Grotesk';
+    padding:12px; border-radius:11px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Space Grotesk';
   }
   .pd-buy-btn{
     flex:1; background:var(--accent); color:var(--accent-ink); border:none;
-    padding:14px; border-radius:12px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:'Space Grotesk';
+    padding:12px; border-radius:11px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Space Grotesk';
   }
 
   /* ---------- ORDER HISTORY ---------- */
@@ -875,9 +879,13 @@
       </div>
       <div class="fp-title">Contact Us</div>
     </div>
-    <div class="list-entry">Email <div class="le-sub">hello@nxtsoul.com</div></div>
+    <a href="https://wa.me/917022406350" target="_blank" style="text-decoration:none;">
+      <div class="list-entry" style="cursor:pointer;">WhatsApp <div class="le-sub">+91 70224 06350 — tap to chat directly</div></div>
+    </a>
+    <a href="mailto:nxtsoul.in.support@gmail.com" style="text-decoration:none;">
+      <div class="list-entry" style="cursor:pointer;">Email <div class="le-sub">nxtsoul.in.support@gmail.com</div></div>
+    </a>
     <div class="list-entry">Support hours <div class="le-sub">Mon–Sat, 10am – 7pm IST</div></div>
-    <div class="list-entry">Instagram <div class="le-sub">@nxtsoul</div></div>
   </div>
 
   <div id="productDetailPage" class="fullpage">
@@ -887,12 +895,17 @@
       </div>
       <div class="fp-title">Product</div>
     </div>
-    <div class="pd-image-wrap"><img id="pdImage" alt=""></div>
-    <div class="pd-thumbs" id="pdThumbs"></div>
+    <div class="pd-carousel" id="pdCarousel"></div>
+    <div class="pd-dots" id="pdDots"></div>
     <div class="pd-cat" id="pdCat"></div>
     <div class="pd-name" id="pdName"></div>
     <div class="pd-rating" id="pdRating"></div>
     <div class="pd-price" id="pdPrice"></div>
+    <div class="pd-color-row" id="pdColorRow" style="display:none;">
+      <div class="pd-color-swatch" id="pdColorSwatch"></div>
+      <span id="pdColorName"></span>
+    </div>
+    <div class="form-label">Description</div>
     <div class="pd-desc" id="pdDesc"></div>
     <div class="form-label">Size</div>
     <div class="size-row" id="sizeRow"></div>
@@ -931,15 +944,15 @@
     </div>
     <div id="payTotalRow" style="font-size:14.5px;color:var(--muted);margin-bottom:18px;">Amount to pay: <strong style="color:var(--ink);" id="payAmount">₹0</strong></div>
     <div class="pay-tabs">
-      <div class="pay-tab active" data-pay="upi">UPI</div>
+      <div class="pay-tab active" data-pay="upi">Pay Online</div>
       <div class="pay-tab" data-pay="cod">Cash on Delivery</div>
     </div>
 
-    <form id="upiForm">
-      <div class="form-label">UPI ID</div>
-      <input class="form-input" id="upiId" type="text" placeholder="yourname@upi" required>
-      <button class="btn-primary" type="submit">Pay Now</button>
-    </form>
+    <div id="onlinePayBlock">
+      <p style="color:var(--muted); font-size:13px; margin-bottom:18px; line-height:1.6;">Card, UPI, netbanking or wallet — pick whatever you like on the next screen.</p>
+      <div id="payError" style="color:#ff6b6b; font-size:12.5px; margin-bottom:12px; display:none;"></div>
+      <button class="btn-primary" type="button" id="razorpayPayBtn">Pay ₹<span id="rzpAmountLabel">0</span> Now</button>
+    </div>
 
     <form id="codForm" style="display:none;">
       <div class="form-label">Full name</div>
@@ -953,6 +966,29 @@
       <div class="form-label">Pincode</div>
       <input class="form-input" id="codPincode" type="text" placeholder="6-digit pincode" required>
       <button class="btn-primary" type="submit">Place COD Order</button>
+    </form>
+  </div>
+
+  <div id="shipAddressPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closeShipAddress">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Delivery Address</div>
+    </div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:18px;">Payment received ✅ — just need to know where to send it.</p>
+    <form id="shipAddressForm">
+      <div class="form-label">Full name</div>
+      <input class="form-input" id="shipName" type="text" placeholder="Full name" required>
+      <div class="form-label">Phone number</div>
+      <input class="form-input" id="shipPhone" type="tel" placeholder="10-digit mobile number" required>
+      <div class="form-label">Delivery address</div>
+      <input class="form-input" id="shipAddress" type="text" placeholder="House no, street, area" required>
+      <div class="form-label">City</div>
+      <input class="form-input" id="shipCity" type="text" placeholder="City" required>
+      <div class="form-label">Pincode</div>
+      <input class="form-input" id="shipPincode" type="text" placeholder="6-digit pincode" required>
+      <button class="btn-primary" type="submit">Confirm Order</button>
     </form>
   </div>
 
@@ -1102,6 +1138,7 @@
   let pendingAmount = 0;
   let pendingOrderItems = [];
   let pendingIsCart = false;
+  let pendingRazorpayPayment = null;
   let loginContext = 'initial'; // 'initial' (first-run) or 'checkout'
   const loginModal = document.getElementById('loginModal');
   const paymentPage = document.getElementById('paymentPage');
@@ -1182,11 +1219,7 @@
   const productDetailPage = document.getElementById('productDetailPage');
   let detailProduct = null, detailSize = null, detailQty = 1;
 
-  function pdSwapImage(src, thumbEl){
-    document.getElementById('pdImage').src = src;
-    document.querySelectorAll('.pd-thumb').forEach(t=>t.classList.remove('active'));
-    thumbEl.classList.add('active');
-  }
+  const colorHexMap = { Black:'#111', White:'#fff', Grey:'#888', Navy:'#1b2a4a', Beige:'#d8c8a8', Olive:'#5c5a34', Red:'#c0392b', Blue:'#2e6fd9', Green:'#2f8a4e', Brown:'#6b4a30', Multicolor:'linear-gradient(45deg,#e74c3c,#f1c40f,#2ecc71,#3498db)' };
 
   function openProductDetail(seed){
     const p = products.find(x=>x.seed===seed);
@@ -1195,15 +1228,29 @@
     detailQty = 1;
     const oos = (p.stock !== undefined && p.stock <= 0);
     const imgs = productImages(p);
-    document.getElementById('pdImage').src = imgs[0];
-    document.getElementById('pdImage').alt = p.name;
-    document.getElementById('pdThumbs').innerHTML = imgs.length > 1 ? imgs.map((src,i)=>
-      `<div class="pd-thumb ${i===0?'active':''}" onclick="pdSwapImage('${src.replace(/'/g,"\\'")}', this)"><img src="${src}"></div>`
-    ).join('') : '';
+    document.getElementById('pdCarousel').innerHTML = `<div class="pd-carousel-track" id="pdTrack">${imgs.map(src=>`<img src="${src}" alt="${p.name}">`).join('')}</div>`;
+    const dotsEl = document.getElementById('pdDots');
+    if(imgs.length > 1){
+      dotsEl.innerHTML = imgs.map((_,i)=>`<div class="pd-dot ${i===0?'active':''}"></div>`).join('');
+      const track = document.getElementById('pdTrack');
+      track.onscroll = ()=>{
+        const idx = Math.round(track.scrollLeft / track.clientWidth);
+        document.querySelectorAll('.pd-dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
+      };
+    } else {
+      dotsEl.innerHTML = '';
+    }
     document.getElementById('pdCat').textContent = p.cat;
     document.getElementById('pdName').textContent = p.name;
     document.getElementById('pdRating').innerHTML = starRating(p.rating);
     document.getElementById('pdPrice').textContent = '₹'+p.price;
+    if(p.color){
+      document.getElementById('pdColorRow').style.display = 'flex';
+      document.getElementById('pdColorSwatch').style.background = colorHexMap[p.color] || '#888';
+      document.getElementById('pdColorName').textContent = p.color;
+    } else {
+      document.getElementById('pdColorRow').style.display = 'none';
+    }
     document.getElementById('pdDesc').textContent = p.desc + (oos ? '' : (p.stock !== undefined && p.stock <= 5 ? ` — Only ${p.stock} left!` : ''));
     document.getElementById('pdQty').textContent = detailQty;
     document.getElementById('sizeRow').innerHTML = p.sizes.map(s =>
@@ -1251,6 +1298,8 @@
 
   function openPayment(amount){
     document.getElementById('payAmount').textContent = "₹"+amount;
+    document.getElementById('razorpayPayBtn').textContent = 'Pay ₹' + amount + ' Now';
+    document.getElementById('payError').style.display = 'none';
     cartDrawer.classList.remove('open');
     paymentPage.classList.add('open');
   }
@@ -1469,7 +1518,7 @@
     tab.addEventListener('click', ()=>{
       document.querySelectorAll('.pay-tab').forEach(t=>t.classList.remove('active'));
       tab.classList.add('active');
-      document.getElementById('upiForm').style.display = tab.dataset.pay==='upi' ? 'block':'none';
+      document.getElementById('onlinePayBlock').style.display = tab.dataset.pay==='upi' ? 'block':'none';
       document.getElementById('codForm').style.display = tab.dataset.pay==='cod' ? 'block':'none';
     });
   });
@@ -1501,10 +1550,95 @@
     goPage('orders');
     alert('Order placed successfully! 🎉');
   }
-  document.getElementById('upiForm').addEventListener('submit', (e)=>{
-    e.preventDefault();
-    completeOrder('UPI', { upiId: document.getElementById('upiId').value });
+
+  // ---- Razorpay ----
+  // Your real public Key ID (safe to expose in frontend code — starts with rzp_).
+  const RAZORPAY_KEY_ID = "rzp_live_THLWXJJEhndqA0";
+  // The Cloudflare Worker URL you get after running "wrangler deploy".
+  const PAYMENT_WORKER_URL = "https://razorpay-worker.nxtsoulpayments.workers.dev";
+
+  document.getElementById('razorpayPayBtn').addEventListener('click', ()=>{
+    const errBox = document.getElementById('payError');
+    errBox.style.display = 'none';
+    if(RAZORPAY_KEY_ID.includes('YOUR_KEY_ID') || PAYMENT_WORKER_URL.includes('your-worker-name')){
+      errBox.textContent = "Razorpay isn't fully set up yet — paste your Key ID and Worker URL into the code (see comments near RAZORPAY_KEY_ID).";
+      errBox.style.display = 'block';
+      return;
+    }
+    const btn = document.getElementById('razorpayPayBtn');
+    btn.disabled = true;
+    btn.textContent = 'Preparing payment...';
+
+    fetch(PAYMENT_WORKER_URL + '/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: pendingAmount })
+    })
+    .then(r => r.json())
+    .then(order => {
+      btn.disabled = false;
+      btn.textContent = 'Pay ₹' + pendingAmount + ' Now';
+      if(order.error || !order.id){
+        errBox.textContent = order.error || 'Could not start payment. Please try again.';
+        errBox.style.display = 'block';
+        return;
+      }
+      const options = {
+        key: RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'NXTSOUL',
+        description: 'Order payment',
+        order_id: order.id,
+        prefill: {
+          name: (currentUser && currentUser.name) || '',
+          email: (currentUser && currentUser.email) || ''
+        },
+        theme: { color: '#c6ff3d' },
+        handler: function(response){
+          fetch(PAYMENT_WORKER_URL + '/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response)
+          })
+          .then(r => r.json())
+          .then(result => {
+            if(result.valid){
+              pendingRazorpayPayment = {
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id
+              };
+              paymentPage.classList.remove('open');
+              document.getElementById('shipAddressPage').classList.add('open');
+            } else {
+              errBox.textContent = 'Payment could not be verified. If money was deducted, it will be refunded automatically.';
+              errBox.style.display = 'block';
+            }
+          })
+          .catch(()=>{
+            errBox.textContent = 'Could not verify payment — check your connection.';
+            errBox.style.display = 'block';
+          });
+        },
+        modal: {
+          ondismiss: function(){}
+        }
+      };
+      const rzp = new Razorpay(options);
+      rzp.on('payment.failed', function(response){
+        errBox.textContent = 'Payment failed: ' + (response.error && response.error.description ? response.error.description : 'please try again.');
+        errBox.style.display = 'block';
+      });
+      rzp.open();
+    })
+    .catch(()=>{
+      btn.disabled = false;
+      btn.textContent = 'Pay ₹' + pendingAmount + ' Now';
+      errBox.textContent = 'Could not reach the payment server — check your connection.';
+      errBox.style.display = 'block';
+    });
   });
+
   document.getElementById('codForm').addEventListener('submit', (e)=>{
     e.preventDefault();
     completeOrder('COD', {
@@ -1514,6 +1648,23 @@
       city: document.getElementById('codCity').value,
       pincode: document.getElementById('codPincode').value
     });
+  });
+
+  document.getElementById('closeShipAddress').onclick = ()=>{
+    document.getElementById('shipAddressPage').classList.remove('open');
+  };
+  document.getElementById('shipAddressForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    completeOrder('Razorpay', {
+      ...pendingRazorpayPayment,
+      name: document.getElementById('shipName').value,
+      phone: document.getElementById('shipPhone').value,
+      address: document.getElementById('shipAddress').value,
+      city: document.getElementById('shipCity').value,
+      pincode: document.getElementById('shipPincode').value
+    });
+    document.getElementById('shipAddressPage').classList.remove('open');
+    document.getElementById('shipAddressForm').reset();
   });
 
   // ---- order history ----
