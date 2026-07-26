@@ -240,6 +240,14 @@
     padding:8px 14px; border-radius:9px; border:1px solid var(--line); background:var(--bg);
     font-size:12.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;
   }
+  .size-price-rows{ margin-bottom:14px; }
+  .size-price-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .spr-check{
+    width:78px; flex-shrink:0; display:flex; align-items:center; gap:6px;
+    font-size:12.5px; font-weight:600; color:var(--ink);
+  }
+  .size-price-row .spr-price{ margin-bottom:0; flex:1; }
+  .size-price-row.disabled .spr-price{ opacity:0.4; }
   .modal-actions{ display:flex; gap:10px; margin-top:6px; }
   .modal-actions .btn-blue, .modal-actions .btn-ghost{ flex:1; }
   .image-drop-zone{
@@ -483,7 +491,12 @@
           <option>Green</option><option>Brown</option><option>Multicolor</option>
         </select>
         <div class="form-label">Price (₹)</div>
-        <input class="form-input" id="pPrice" type="number" min="1" placeholder="Price in rupees" required>
+        <div style="display:flex; gap:8px; align-items:flex-start;">
+          <input class="form-input" id="pPrice" type="number" min="1" placeholder="Price in rupees" required style="flex:1;">
+          <button type="button" class="btn-ghost" id="copyPriceBtn" style="flex-shrink:0; width:auto; padding:11px 14px;">Apply to sizes</button>
+        </div>
+        <div class="form-label">Compare-at price (optional — shows a strikethrough discount)</div>
+        <input class="form-input" id="pComparePrice" type="number" min="0" placeholder="e.g. 1999 (leave blank for no discount)">
         <div class="form-label">Stock quantity</div>
         <input class="form-input" id="pStock" type="number" min="0" placeholder="How many in stock" required>
         <div class="form-label">GST / Tax (%)</div>
@@ -498,13 +511,28 @@
         </select>
         <div class="form-label">Description</div>
         <textarea class="form-input" id="pDesc" rows="3" placeholder="Short product description" required style="resize:vertical;"></textarea>
-        <div class="form-label">Sizes available</div>
-        <div class="size-checks" id="pSizes">
-          <label class="size-check"><input type="checkbox" value="S" checked>S</label>
-          <label class="size-check"><input type="checkbox" value="M" checked>M</label>
-          <label class="size-check"><input type="checkbox" value="L" checked>L</label>
-          <label class="size-check"><input type="checkbox" value="XL" checked>XL</label>
-          <label class="size-check"><input type="checkbox" value="One Size">One Size</label>
+        <div class="form-label">Sizes & price per size</div>
+        <div class="size-price-rows" id="pSizes">
+          <div class="size-price-row" data-size="S">
+            <label class="spr-check"><input type="checkbox" value="S" checked>S</label>
+            <input class="form-input spr-price" type="number" min="0" placeholder="Price for S">
+          </div>
+          <div class="size-price-row" data-size="M">
+            <label class="spr-check"><input type="checkbox" value="M" checked>M</label>
+            <input class="form-input spr-price" type="number" min="0" placeholder="Price for M">
+          </div>
+          <div class="size-price-row" data-size="L">
+            <label class="spr-check"><input type="checkbox" value="L" checked>L</label>
+            <input class="form-input spr-price" type="number" min="0" placeholder="Price for L">
+          </div>
+          <div class="size-price-row" data-size="XL">
+            <label class="spr-check"><input type="checkbox" value="XL" checked>XL</label>
+            <input class="form-input spr-price" type="number" min="0" placeholder="Price for XL">
+          </div>
+          <div class="size-price-row" data-size="One Size">
+            <label class="spr-check"><input type="checkbox" value="One Size">One Size</label>
+            <input class="form-input spr-price" type="number" min="0" placeholder="Price">
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn-ghost" type="button" id="cancelProductBtn">Cancel</button>
@@ -639,6 +667,7 @@
       const dayTotals = [0,0,0,0,0,0,0];
 
       orders.forEach(o=>{
+        if(o.status === 'Cancelled') return; // cancelled orders don't count toward revenue
         const t = o.placedAt && o.placedAt.toMillis ? o.placedAt.toMillis() : 0;
         total += (o.amount||0);
         if(t >= startOfDay) today += (o.amount||0);
@@ -649,13 +678,14 @@
         if(t && daysAgo >= 0 && daysAgo < 7){ dayTotals[6-daysAgo] += (o.amount||0); }
       });
 
+      const countedOrders = orders.filter(o=>o.status !== 'Cancelled');
       const setStat = (id,val)=>{ const el=document.getElementById(id); el.textContent=val; el.classList.remove('skeleton'); };
       setStat('statToday','₹'+today);
       setStat('statWeek','₹'+week);
       setStat('statMonth','₹'+month);
       setStat('statTotal','₹'+total);
       setStat('statOrderCount', orders.length);
-      setStat('statAOV', orders.length ? '₹'+Math.round(total/orders.length) : '₹0');
+      setStat('statAOV', countedOrders.length ? '₹'+Math.round(total/countedOrders.length) : '₹0');
       setStat('statPending', pending);
 
       const maxDay = Math.max(...dayTotals, 1);
@@ -786,7 +816,7 @@
       if(!productsCache.length){ grid.innerHTML = `<p class="empty-note">No products yet — add your first one.</p>`; return; }
       grid.innerHTML = productsCache.map(p=>{
         let sold=0, revenue=0;
-        orders.forEach(o=>{ (o.items||[]).forEach(it=>{ if(it.seed===p.seed){ sold+=it.qty; revenue+=it.qty*it.price; } }); });
+        orders.filter(o=>o.status!=='Cancelled').forEach(o=>{ (o.items||[]).forEach(it=>{ if(it.seed===p.seed){ sold+=it.qty; revenue+=it.qty*it.price; } }); });
         const stock = p.stock !== undefined ? p.stock : '—';
         const oos = (p.stock !== undefined && p.stock <= 0);
         return `<div class="product-card">
@@ -854,9 +884,15 @@
     newImageFiles = [];
     keptExistingImages = [];
     document.getElementById('productForm').reset();
-    document.querySelectorAll('#pSizes input').forEach((cb,i)=> cb.checked = i<4);
+    document.querySelectorAll('#pSizes .size-price-row').forEach((row,i)=>{
+      const cb = row.querySelector('input[type=checkbox]');
+      cb.checked = i<4;
+      row.querySelector('.spr-price').value = '';
+      row.classList.toggle('disabled', !cb.checked);
+    });
     document.getElementById('pGender').value = 'Unisex';
     document.getElementById('pColor').value = 'Black';
+    document.getElementById('pComparePrice').value = '';
     document.getElementById('pGst').value = 12;
     document.getElementById('pDelivery').value = 49;
     document.getElementById('productModalTitle').textContent = 'Add Product';
@@ -870,6 +906,22 @@
   };
   document.getElementById('cancelProductBtn').onclick = ()=> productModal.classList.remove('show');
 
+  // enable/disable price input as its size checkbox toggles
+  document.querySelectorAll('#pSizes .size-price-row input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const row = cb.closest('.size-price-row');
+      row.classList.toggle('disabled', !cb.checked);
+    });
+  });
+  document.getElementById('copyPriceBtn').onclick = ()=>{
+    const val = document.getElementById('pPrice').value;
+    if(!val) return;
+    document.querySelectorAll('#pSizes .size-price-row').forEach(row=>{
+      const cb = row.querySelector('input[type=checkbox]');
+      if(cb.checked) row.querySelector('.spr-price').value = val;
+    });
+  };
+
   function editProduct(seed){
     const p = productsCache.find(x=>x.seed===seed);
     if(!p) return;
@@ -881,12 +933,23 @@
     document.getElementById('pGender').value = p.gender || 'Unisex';
     document.getElementById('pColor').value = p.color || 'Black';
     document.getElementById('pPrice').value = p.price;
+    document.getElementById('pComparePrice').value = p.comparePrice || '';
     document.getElementById('pStock').value = (p.stock !== undefined ? p.stock : 0);
     document.getElementById('pGst').value = (p.gstPercent !== undefined ? p.gstPercent : 12);
     document.getElementById('pDelivery').value = (p.deliveryCharge !== undefined ? p.deliveryCharge : 49);
     document.getElementById('pBadge').value = p.badge || '';
     document.getElementById('pDesc').value = p.desc || '';
-    document.querySelectorAll('#pSizes input').forEach(cb=> cb.checked = (p.sizes||[]).includes(cb.value));
+    document.querySelectorAll('#pSizes .size-price-row').forEach(row=>{
+      const size = row.dataset.size;
+      const cb = row.querySelector('input[type=checkbox]');
+      const isIncluded = (p.sizes||[]).includes(size);
+      cb.checked = isIncluded;
+      row.classList.toggle('disabled', !isIncluded);
+      if(isIncluded){
+        const sp = (p.sizePrices && p.sizePrices[size] !== undefined) ? p.sizePrices[size] : p.price;
+        row.querySelector('.spr-price').value = sp;
+      }
+    });
     renderImageThumbs();
     document.getElementById('productModalTitle').textContent = 'Edit Product';
     document.getElementById('submitProductBtn').textContent = 'Save Changes';
@@ -900,8 +963,16 @@
 
   document.getElementById('productForm').addEventListener('submit', (e)=>{
     e.preventDefault();
-    const sizes = Array.from(document.querySelectorAll('#pSizes input:checked')).map(cb=>cb.value);
-    if(!sizes.length){ alert('Pick at least one size.'); return; }
+    const sizeRows = Array.from(document.querySelectorAll('#pSizes .size-price-row'))
+      .filter(row => row.querySelector('input[type=checkbox]').checked);
+    if(!sizeRows.length){ alert('Pick at least one size.'); return; }
+    const basePrice = Number(document.getElementById('pPrice').value);
+    const sizes = sizeRows.map(row => row.dataset.size);
+    const sizePrices = {};
+    sizeRows.forEach(row=>{
+      const priceInput = row.querySelector('.spr-price');
+      sizePrices[row.dataset.size] = priceInput.value ? Number(priceInput.value) : basePrice;
+    });
     if(!newImageFiles.length && !keptExistingImages.length){ alert('Please add at least one product photo.'); return; }
     if(CLOUDINARY_CLOUD_NAME === 'your-cloud-name' && newImageFiles.length){
       alert('Photo upload needs Cloudinary set up first — paste your cloud name & upload preset into the code (see comments near ADMIN_EMAIL).');
@@ -919,6 +990,8 @@
       ? Promise.all(newImageFiles.map(uploadToCloudinary))
       : Promise.resolve([]);
 
+    const comparePriceVal = document.getElementById('pComparePrice').value;
+
     uploadStep.then(newUrls=>{
       const allImages = keptExistingImages.concat(newUrls);
       const data = {
@@ -926,7 +999,9 @@
         cat: document.getElementById('pCat').value.trim(),
         gender: document.getElementById('pGender').value,
         color: document.getElementById('pColor').value,
-        price: Number(document.getElementById('pPrice').value),
+        price: basePrice,
+        comparePrice: comparePriceVal ? Number(comparePriceVal) : 0,
+        sizePrices: sizePrices,
         stock: Number(document.getElementById('pStock').value),
         gstPercent: Number(document.getElementById('pGst').value),
         deliveryCharge: Number(document.getElementById('pDelivery').value),
@@ -960,7 +1035,8 @@
       if(!users.length){ body.innerHTML = `<tr><td colspan="4" class="empty-note">No customers yet.</td></tr>`; return; }
       body.innerHTML = users.map(u=>{
         const theirOrders = orders.filter(o=>o.uid===u.uid);
-        const spend = theirOrders.reduce((s,o)=>s+(o.amount||0),0);
+        const theirValidOrders = theirOrders.filter(o=>o.status!=='Cancelled');
+        const spend = theirValidOrders.reduce((s,o)=>s+(o.amount||0),0);
         return `<tr><td>${u.name||'Unnamed'}</td><td>${u.email||''}</td><td>${theirOrders.length}</td><td>₹${spend}</td></tr>`;
       }).join('');
     });
