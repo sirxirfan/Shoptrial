@@ -486,6 +486,10 @@
         <input class="form-input" id="pPrice" type="number" min="1" placeholder="Price in rupees" required>
         <div class="form-label">Stock quantity</div>
         <input class="form-input" id="pStock" type="number" min="0" placeholder="How many in stock" required>
+        <div class="form-label">GST / Tax (%)</div>
+        <input class="form-input" id="pGst" type="number" min="0" max="28" placeholder="e.g. 5, 12, 18" required>
+        <div class="form-label">Delivery charge (₹)</div>
+        <input class="form-input" id="pDelivery" type="number" min="0" placeholder="0 for free delivery" required>
         <div class="form-label">Badge</div>
         <select class="form-input" id="pBadge">
           <option value="">None</option>
@@ -699,14 +703,14 @@
     if(!sorted.length){ list.innerHTML = `<p class="empty-note">No matching orders.</p>`; return; }
     list.innerHTML = sorted.map(o=>{
       const itemsHTML = (o.items||[]).map(it=>`${it.name} (${it.size}) ×${it.qty}`).join('<br>');
-      const codHTML = (o.method==='COD' && o.details && o.details.name) ? `
+      const addrHTML = ((o.method==='COD' || o.method==='Razorpay') && o.details && o.details.name) ? `
         <div class="detail-box">${o.details.name} · ${o.details.phone}<br>${o.details.address}, ${o.details.city} — ${o.details.pincode}</div>` : '';
-      const upiHTML = (o.method==='UPI' && o.details && o.details.upiId) ? `<div class="detail-box">UPI: ${o.details.upiId}</div>` : '';
+      const payIdHTML = (o.method==='Razorpay' && o.details && o.details.paymentId) ? `<div class="detail-box">Payment ID: ${o.details.paymentId}</div>` : '';
       const date = o.placedAt && o.placedAt.toDate ? o.placedAt.toDate().toLocaleDateString() : 'Just now';
       return `<div class="data-row">
         <div><div class="dr-label">Order</div><div class="dr-id">#${o.id.slice(0,6).toUpperCase()}</div><div class="dr-sub">${date}</div></div>
         <div><div class="dr-label">Customer</div>${o.customerName||'Guest'}<div class="dr-sub">${o.customerEmail||''}</div></div>
-        <div><div class="dr-label">Items</div><div class="dr-sub">${itemsHTML||'—'}</div>${codHTML}${upiHTML}</div>
+        <div><div class="dr-label">Items</div><div class="dr-sub">${itemsHTML||'—'}</div>${addrHTML}${payIdHTML}</div>
         <div><div class="dr-label">Method</div>${o.method||'—'}</div>
         <div>
           <div class="dr-label">Status / Amount</div>
@@ -728,7 +732,7 @@
     const itemsRows = (o.items||[]).map(it=>`
       <tr><td>${it.name} (${it.size})</td><td>${it.qty}</td><td>₹${it.price}</td><td>₹${it.qty*it.price}</td></tr>
     `).join('');
-    const shipHTML = (o.method==='COD' && o.details && o.details.name)
+    const shipHTML = ((o.method==='COD' || o.method==='Razorpay') && o.details && o.details.name)
       ? `<p>${o.details.name} · ${o.details.phone}<br>${o.details.address}, ${o.details.city} — ${o.details.pincode}</p>` : '';
     const win = window.open('', '_blank');
     win.document.write(`
@@ -853,6 +857,8 @@
     document.querySelectorAll('#pSizes input').forEach((cb,i)=> cb.checked = i<4);
     document.getElementById('pGender').value = 'Unisex';
     document.getElementById('pColor').value = 'Black';
+    document.getElementById('pGst').value = 12;
+    document.getElementById('pDelivery').value = 49;
     document.getElementById('productModalTitle').textContent = 'Add Product';
     document.getElementById('submitProductBtn').textContent = 'Add Product';
     renderImageThumbs();
@@ -876,6 +882,8 @@
     document.getElementById('pColor').value = p.color || 'Black';
     document.getElementById('pPrice').value = p.price;
     document.getElementById('pStock').value = (p.stock !== undefined ? p.stock : 0);
+    document.getElementById('pGst').value = (p.gstPercent !== undefined ? p.gstPercent : 12);
+    document.getElementById('pDelivery').value = (p.deliveryCharge !== undefined ? p.deliveryCharge : 49);
     document.getElementById('pBadge').value = p.badge || '';
     document.getElementById('pDesc').value = p.desc || '';
     document.querySelectorAll('#pSizes input').forEach(cb=> cb.checked = (p.sizes||[]).includes(cb.value));
@@ -920,6 +928,8 @@
         color: document.getElementById('pColor').value,
         price: Number(document.getElementById('pPrice').value),
         stock: Number(document.getElementById('pStock').value),
+        gstPercent: Number(document.getElementById('pGst').value),
+        deliveryCharge: Number(document.getElementById('pDelivery').value),
         badge: document.getElementById('pBadge').value,
         desc: document.getElementById('pDesc').value.trim(),
         images: allImages,
