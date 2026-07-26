@@ -302,6 +302,19 @@
   #checkoutBtn:disabled{ opacity:0.4; cursor:not-allowed; }
 
   /* ---------- LOGIN MODAL ---------- */
+  #imageLightbox{
+    position:fixed; inset:0; z-index:420; background:rgba(0,0,0,0.94);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.2s ease; padding:20px;
+  }
+  #imageLightbox.show{ opacity:1; pointer-events:auto; }
+  #imageLightbox img{ max-width:100%; max-height:88vh; border-radius:10px; object-fit:contain; }
+  .lightbox-close{
+    position:absolute; top:20px; right:20px; width:38px; height:38px; border-radius:50%;
+    background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .pd-carousel{ cursor:zoom-in; }
+
   #orderSuccessModal{
     position:fixed; inset:0; z-index:410;
     background:rgba(0,0,0,0.65); backdrop-filter:blur(4px);
@@ -467,7 +480,9 @@
     display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:36px;
   }
   .card{
-    border:1px solid var(--line); border-radius:13px; overflow:hidden; background:var(--surface);
+    border:1px solid rgba(255,255,255,0.09); border-radius:13px; overflow:hidden;
+    background:rgba(255,255,255,0.045);
+    backdrop-filter:blur(16px) saturate(150%); -webkit-backdrop-filter:blur(16px) saturate(150%);
     transition:transform 0.2s ease, box-shadow 0.2s ease; cursor:pointer;
   }
   .card:hover{ transform:translateY(-3px); box-shadow:0 12px 24px rgba(0,0,0,0.4); }
@@ -482,7 +497,9 @@
   .card .cat{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; font-weight:600;}
   .card .name{ font-size:12px; font-weight:600; margin:3px 0 6px; color:var(--ink); line-height:1.25; }
   .card .row{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
-  .card .price{ font-weight:700; font-size:12.5px; color:var(--ink); }
+  .card .price{ font-weight:700; font-size:12.5px; color:var(--ink); display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+  .compare-price{ font-weight:500; font-size:10.5px; color:var(--muted); text-decoration:line-through; }
+  .discount-badge{ font-size:9px; font-weight:700; color:#7ddb2f; background:rgba(198,255,61,0.12); padding:2px 5px; border-radius:5px; }
   .card .add-btn{
     width:26px; height:26px; border-radius:8px; border:1px solid var(--line);
     background:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -572,6 +589,13 @@
     <h1>Welcome to NXT<span>SOUL</span></h1>
     <p>Ek chota sa streetwear clothing brand — sharp cuts, comfy fabric, zero noise. Apna fit dhoondo aur style karo.</p>
     <button id="getStartedBtn">Get Started</button>
+  </div>
+
+  <div id="imageLightbox" onclick="closeLightbox()">
+    <div class="lightbox-close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <img id="lightboxImg" alt="">
   </div>
 
   <div id="orderSuccessModal">
@@ -696,7 +720,7 @@
         <button onclick="goPage('products')">Shop the drop</button>
       </div>
 
-      <div class="section-title">Trending now <span class="tag">8 items</span></div>
+      <div class="section-title">Trending now <span class="tag" id="homeCountTag">8 items</span></div>
       <div class="grid" id="homeGrid"><p style="color:var(--muted);font-size:13px;">Loading products...</p></div>
     </section>
 
@@ -943,7 +967,7 @@
       </div>
       <div class="fp-title">Product</div>
     </div>
-    <div class="pd-carousel" id="pdCarousel"></div>
+    <div class="pd-carousel" id="pdCarousel" onclick="openLightbox()"></div>
     <div class="pd-dots" id="pdDots"></div>
     <div class="pd-cat" id="pdCat"></div>
     <div class="pd-name" id="pdName"></div>
@@ -1106,6 +1130,44 @@
     return "★".repeat(full) + "☆".repeat(5-full) + ` <span style="color:var(--muted);font-weight:600;">${rating}</span>`;
   }
 
+  // price for a specific size — falls back to base price if no per-size pricing set
+  function priceForSize(p, size){
+    if(p.sizePrices && p.sizePrices[size] !== undefined && p.sizePrices[size] !== null && p.sizePrices[size] !== '') {
+      return Number(p.sizePrices[size]);
+    }
+    return p.price;
+  }
+  // lowest price across a product's sizes, for card display
+  function basePrice(p){
+    if(p.sizePrices){
+      const vals = Object.values(p.sizePrices).map(Number).filter(v=>v>0);
+      if(vals.length) return Math.min(...vals);
+    }
+    return p.price;
+  }
+  function priceRangeInfo(p){
+    if(p.sizePrices){
+      const vals = Object.values(p.sizePrices).map(Number).filter(v=>v>0);
+      if(vals.length) return { min: Math.min(...vals), isRange: Math.min(...vals) !== Math.max(...vals) };
+    }
+    return { min: p.price, isRange: false };
+  }
+  function discountPercent(p){
+    if(p.comparePrice && p.comparePrice > basePrice(p)){
+      return Math.round((p.comparePrice - basePrice(p)) / p.comparePrice * 100);
+    }
+    return 0;
+  }
+  function priceRowHTML(p){
+    const range = priceRangeInfo(p);
+    const disc = discountPercent(p);
+    const priceText = (range.isRange ? 'From ₹' : '₹') + range.min;
+    if(disc > 0){
+      return `<div class="price"><span>${priceText}</span> <span class="compare-price">₹${p.comparePrice}</span> <span class="discount-badge">${disc}% OFF</span></div>`;
+    }
+    return `<div class="price">${priceText}</div>`;
+  }
+
   function cardHTML(p, idx){
     const oos = (p.stock !== undefined && p.stock <= 0);
     return `
@@ -1118,7 +1180,7 @@
           <div class="cat">${p.cat}</div>
           <div class="name">${p.name}</div>
           <div class="row">
-            <div class="price">₹${p.price}</div>
+            ${priceRowHTML(p)}
             ${oos ? '' : `<div class="add-btn" onclick="addToCart(event,'${p.seed}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>`}
@@ -1132,6 +1194,7 @@
     document.getElementById('homeGrid').innerHTML = products.slice(0,4).map(cardHTML).join("");
     document.getElementById('productsGrid').innerHTML = products.map(cardHTML).join("");
     document.getElementById('productCountTag').textContent = products.length + " items";
+    document.getElementById('homeCountTag').textContent = Math.min(products.length,4) + " items";
   }
 
   function loadProductsFromDB(){
@@ -1166,7 +1229,7 @@
     e.stopPropagation();
     const p = products.find(x=>x.seed===seed);
     if(p.stock !== undefined && p.stock <= 0){ alert('Sorry, this item is out of stock.'); return; }
-    cartItems.push({ name:p.name, price:p.price, seed:p.seed, size:p.sizes[0], qty:1, imageUrl:p.imageUrl||'' });
+    cartItems.push({ name:p.name, price:priceForSize(p,p.sizes[0]), seed:p.seed, size:p.sizes[0], qty:1, imageUrl:p.imageUrl||'' });
     renderCart();
   }
   function removeFromCart(idx){
@@ -1271,8 +1334,9 @@
     e.stopPropagation();
     const p = products.find(x=>x.seed===seed);
     if(p.stock !== undefined && p.stock <= 0){ alert('Sorry, this item is out of stock.'); return; }
-    pendingAmount = p.price;
-    pendingOrderItems = [{ name:p.name, seed:p.seed, size:p.sizes[0], qty:1, price:p.price }];
+    const unitPrice = priceForSize(p, p.sizes[0]);
+    pendingAmount = unitPrice;
+    pendingOrderItems = [{ name:p.name, seed:p.seed, size:p.sizes[0], qty:1, price:unitPrice }];
     pendingIsCart = false;
     if(isLoggedIn){ openCheckout(); } else {
       loginContext = 'checkout';
@@ -1286,6 +1350,17 @@
   let detailProduct = null, detailSize = null, detailQty = 1;
 
   const colorHexMap = { Black:'#111', White:'#fff', Grey:'#888', Navy:'#1b2a4a', Beige:'#d8c8a8', Olive:'#5c5a34', Red:'#c0392b', Blue:'#2e6fd9', Green:'#2f8a4e', Brown:'#6b4a30', Multicolor:'linear-gradient(45deg,#e74c3c,#f1c40f,#2ecc71,#3498db)' };
+  let pdCurrentImgs = [];
+  let pdActiveIdx = 0;
+
+  function openLightbox(){
+    if(!pdCurrentImgs.length) return;
+    document.getElementById('lightboxImg').src = pdCurrentImgs[pdActiveIdx];
+    document.getElementById('imageLightbox').classList.add('show');
+  }
+  function closeLightbox(){
+    document.getElementById('imageLightbox').classList.remove('show');
+  }
 
   function openProductDetail(seed){
     const p = products.find(x=>x.seed===seed);
@@ -1294,6 +1369,8 @@
     detailQty = 1;
     const oos = (p.stock !== undefined && p.stock <= 0);
     const imgs = productImages(p);
+    pdCurrentImgs = imgs;
+    pdActiveIdx = 0;
     document.getElementById('pdCarousel').innerHTML = `<div class="pd-carousel-track" id="pdTrack">${imgs.map(src=>`<img src="${src}" alt="${p.name}">`).join('')}</div>`;
     const dotsEl = document.getElementById('pdDots');
     if(imgs.length > 1){
@@ -1301,6 +1378,7 @@
       const track = document.getElementById('pdTrack');
       track.onscroll = ()=>{
         const idx = Math.round(track.scrollLeft / track.clientWidth);
+        pdActiveIdx = idx;
         document.querySelectorAll('.pd-dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
       };
     } else {
@@ -1309,7 +1387,14 @@
     document.getElementById('pdCat').textContent = p.cat;
     document.getElementById('pdName').textContent = p.name;
     document.getElementById('pdRating').innerHTML = starRating(p.rating);
-    document.getElementById('pdPrice').textContent = '₹'+p.price;
+    function renderPdPrice(){
+      const unit = priceForSize(p, detailSize);
+      const disc = discountPercent(p);
+      document.getElementById('pdPrice').innerHTML = disc > 0
+        ? `₹${unit} <span class="compare-price" style="font-size:14px;">₹${p.comparePrice}</span> <span class="discount-badge">${disc}% OFF</span>`
+        : `₹${unit}`;
+    }
+    renderPdPrice();
     if(p.color){
       document.getElementById('pdColorRow').style.display = 'flex';
       document.getElementById('pdColorSwatch').style.background = colorHexMap[p.color] || '#888';
@@ -1327,6 +1412,7 @@
         detailSize = btn.dataset.size;
         document.querySelectorAll('#sizeRow .size-btn').forEach(b=>b.classList.remove('active'));
         btn.classList.add('active');
+        renderPdPrice();
       };
     });
     document.getElementById('pdAddCart').disabled = oos;
@@ -1345,14 +1431,16 @@
     if(detailQty<10){ detailQty++; document.getElementById('pdQty').textContent = detailQty; }
   };
   document.getElementById('pdAddCart').onclick = ()=>{
-    cartItems.push({ name:detailProduct.name, price:detailProduct.price, seed:detailProduct.seed, size:detailSize, qty:detailQty, imageUrl:detailProduct.imageUrl||'' });
+    const unit = priceForSize(detailProduct, detailSize);
+    cartItems.push({ name:detailProduct.name, price:unit, seed:detailProduct.seed, size:detailSize, qty:detailQty, imageUrl:detailProduct.imageUrl||'' });
     renderCart();
     productDetailPage.classList.remove('open');
     cartDrawer.classList.add('open');
   };
   document.getElementById('pdBuyNow').onclick = ()=>{
-    pendingAmount = detailProduct.price * detailQty;
-    pendingOrderItems = [{ name:detailProduct.name, seed:detailProduct.seed, size:detailSize, qty:detailQty, price:detailProduct.price }];
+    const unit = priceForSize(detailProduct, detailSize);
+    pendingAmount = unit * detailQty;
+    pendingOrderItems = [{ name:detailProduct.name, seed:detailProduct.seed, size:detailSize, qty:detailQty, price:unit }];
     pendingIsCart = false;
     productDetailPage.classList.remove('open');
     if(isLoggedIn){ openCheckout(); } else {
@@ -2008,6 +2096,7 @@
     return document.querySelector('.fullpage.open') ||
       document.getElementById('loginModal').classList.contains('show') ||
       document.getElementById('drawer').classList.contains('open') ||
+      document.getElementById('imageLightbox').classList.contains('show') ||
       document.getElementById('welcome').style.display !== 'none';
   }
   function updateScrollLock(){
@@ -2034,6 +2123,7 @@
   });
   scrollLockObserver.observe(document.getElementById('loginModal'), { attributes:true, attributeFilter:['class'] });
   scrollLockObserver.observe(document.getElementById('drawer'), { attributes:true, attributeFilter:['class'] });
+  scrollLockObserver.observe(document.getElementById('imageLightbox'), { attributes:true, attributeFilter:['class'] });
   scrollLockObserver.observe(document.getElementById('welcome'), { attributes:true, attributeFilter:['style'] });
   updateScrollLock();
 
