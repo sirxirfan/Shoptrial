@@ -205,7 +205,7 @@
   .pay-tab.active{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
 
   /* ---------- PRODUCT DETAIL PAGE ---------- */
-  .pd-carousel{ width:100%; aspect-ratio:1/1; border-radius:16px; overflow:hidden; background:#1c1c1c; margin-bottom:8px; position:relative; }
+  .pd-carousel{ width:100%; aspect-ratio:4/5; border-radius:16px; overflow:hidden; background:#1c1c1c; margin-bottom:8px; position:relative; }
   .pd-carousel-track{ display:flex; width:100%; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
   .pd-carousel-track::-webkit-scrollbar{ display:none; }
   .pd-carousel-track img{ flex:0 0 100%; width:100%; height:100%; object-fit:cover; scroll-snap-align:start; }
@@ -260,6 +260,24 @@
   .order-amount{ font-size:15px; font-weight:700; color:var(--ink); }
 
   #cartItemsList{ display:flex; flex-direction:column; gap:12px; }
+  .checkout-item{
+    display:flex; align-items:center; gap:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:10px;
+  }
+  .checkout-item img{ width:46px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0; }
+  .checkout-item .ci-info{ flex:1; min-width:0; }
+  .checkout-item .ci-name{ font-size:13px; font-weight:600; color:var(--ink); }
+  .checkout-item .ci-price{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .checkout-item .ci-linetotal{ font-size:13.5px; font-weight:700; color:var(--ink); }
+  .checkout-summary{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px;
+  }
+  .cs-row{ display:flex; justify-content:space-between; font-size:13.5px; color:var(--muted); padding:6px 0; }
+  .cs-row.cs-total{
+    border-top:1px solid var(--line); margin-top:6px; padding-top:12px;
+    font-size:16px; font-weight:700; color:var(--ink);
+  }
+
   .cart-item{
     display:flex; align-items:center; gap:10px;
     background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px;
@@ -284,6 +302,25 @@
   #checkoutBtn:disabled{ opacity:0.4; cursor:not-allowed; }
 
   /* ---------- LOGIN MODAL ---------- */
+  #orderSuccessModal{
+    position:fixed; inset:0; z-index:410;
+    background:rgba(0,0,0,0.65); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease;
+    padding:20px;
+  }
+  #orderSuccessModal.show{ opacity:1; pointer-events:auto; }
+  #orderSuccessModal .success-check{
+    width:56px; height:56px; border-radius:50%; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; margin:0 auto;
+  }
+  #orderSuccessModal h3{ font-size:19px; margin-bottom:8px; }
+  #orderSuccessModal p{ color:var(--muted); font-size:13px; margin-bottom:22px; }
+  #orderSuccessModal button{
+    width:100%; background:var(--accent); color:var(--accent-ink); border:none;
+    padding:13px; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer; font-family:'Space Grotesk';
+  }
+
   #loginModal{
     position:fixed; inset:0; z-index:400;
     background:#0a0a0a;
@@ -535,6 +572,17 @@
     <h1>Welcome to NXT<span>SOUL</span></h1>
     <p>Ek chota sa streetwear clothing brand — sharp cuts, comfy fabric, zero noise. Apna fit dhoondo aur style karo.</p>
     <button id="getStartedBtn">Get Started</button>
+  </div>
+
+  <div id="orderSuccessModal">
+    <div class="login-box" style="text-align:center;">
+      <div class="success-check">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3 style="margin-top:16px;">Order Placed!</h3>
+      <p id="successOrderLine">Your order has been placed successfully.</p>
+      <button type="button" id="successContinueBtn" style="margin-top:8px;">Continue Shopping</button>
+    </div>
   </div>
 
   <div id="loginModal">
@@ -935,6 +983,24 @@
     </div>
   </div>
 
+  <div id="checkoutPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closeCheckout">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Checkout</div>
+    </div>
+    <div class="form-label">Order items</div>
+    <div id="checkoutItemsList" style="margin-bottom:18px;"></div>
+    <div class="checkout-summary">
+      <div class="cs-row"><span>Subtotal</span><span id="csSubtotal">₹0</span></div>
+      <div class="cs-row"><span>GST / Tax</span><span id="csGst">₹0</span></div>
+      <div class="cs-row"><span>Delivery</span><span id="csDelivery">₹0</span></div>
+      <div class="cs-row cs-total"><span>Total</span><span id="csTotal">₹0</span></div>
+    </div>
+    <button class="btn-primary" id="continueToPaymentBtn" type="button" style="margin-top:18px;">Continue to Payment</button>
+  </div>
+
   <div id="paymentPage" class="fullpage">
     <div class="fp-header">
       <div class="fp-back" id="closePayment">
@@ -1014,14 +1080,14 @@
 
 <script>
   const defaultProducts = [
-    { name:"Onyx Bomber Jacket", cat:"Outerwear", price:4299, seed:"nxt1", badge:"New", rating:4.6, desc:"A street-cut bomber in matte black shell fabric with a quilted lining. Ribbed cuffs and hem keep the silhouette sharp without losing movement.", sizes:["S","M","L","XL"], stock:18, gender:"Unisex", color:"Black" },
-    { name:"Slate Oversized Tee", cat:"Tops", price:999, seed:"nxt2", rating:4.3, desc:"Heavyweight 240 GSM cotton in an oversized drop-shoulder fit. Garment-washed for a soft, broken-in feel straight out of the pack.", sizes:["S","M","L","XL"], stock:32, gender:"Unisex", color:"Grey" },
-    { name:"Cargo Utility Pants", cat:"Bottoms", price:2199, seed:"nxt3", badge:"Hot", rating:4.5, desc:"Tapered utility pants with reinforced side pockets and an adjustable waist. Built from a stretch ripstop that moves with you all day.", sizes:["S","M","L","XL"], stock:24, gender:"Men", color:"Olive" },
-    { name:"Mono Hoodie", cat:"Tops", price:1899, seed:"nxt4", rating:4.4, desc:"A no-logo hoodie in brushed fleece with a lined hood and kangaroo pocket. Boxy fit, made to layer under the bomber or on its own.", sizes:["S","M","L","XL"], stock:20, gender:"Unisex", color:"Black" },
-    { name:"Track Jacket 01", cat:"Outerwear", price:2799, seed:"nxt5", rating:4.2, desc:"Zip-through track jacket in a lightweight tricot with taped seams. Stands up to wind without trapping heat.", sizes:["S","M","L","XL"], stock:15, gender:"Men", color:"Navy" },
-    { name:"Ash Denim Jeans", cat:"Bottoms", price:2499, seed:"nxt6", rating:4.5, desc:"Straight-leg denim in a stonewashed ash tone. Mid-rise, with just enough stretch to stay comfortable through a full day.", sizes:["S","M","L","XL"], stock:22, gender:"Women", color:"Blue" },
-    { name:"Ribbed Beanie", cat:"Accessories", price:499, seed:"nxt7", rating:4.7, desc:"A tight-rib knit beanie in a snug, no-slouch fit. One size, stretches to fit most heads comfortably.", sizes:["One Size"], stock:40, gender:"Unisex", color:"Beige" },
-    { name:"Combat Sneakers", cat:"Footwear", price:3499, seed:"nxt8", badge:"New", rating:4.6, desc:"Chunky combat-sole sneakers in full-grain leather. Padded collar and a grippy tread built for the city and beyond.", sizes:["S","M","L","XL"], stock:12, gender:"Unisex", color:"Black" },
+    { name:"Onyx Bomber Jacket", cat:"Outerwear", price:4299, seed:"nxt1", badge:"New", rating:4.6, desc:"A street-cut bomber in matte black shell fabric with a quilted lining. Ribbed cuffs and hem keep the silhouette sharp without losing movement.", sizes:["S","M","L","XL"], stock:18, gender:"Unisex", color:"Black", gstPercent:12, deliveryCharge:49 },
+    { name:"Slate Oversized Tee", cat:"Tops", price:999, seed:"nxt2", rating:4.3, desc:"Heavyweight 240 GSM cotton in an oversized drop-shoulder fit. Garment-washed for a soft, broken-in feel straight out of the pack.", sizes:["S","M","L","XL"], stock:32, gender:"Unisex", color:"Grey", gstPercent:5, deliveryCharge:49 },
+    { name:"Cargo Utility Pants", cat:"Bottoms", price:2199, seed:"nxt3", badge:"Hot", rating:4.5, desc:"Tapered utility pants with reinforced side pockets and an adjustable waist. Built from a stretch ripstop that moves with you all day.", sizes:["S","M","L","XL"], stock:24, gender:"Men", color:"Olive", gstPercent:12, deliveryCharge:49 },
+    { name:"Mono Hoodie", cat:"Tops", price:1899, seed:"nxt4", rating:4.4, desc:"A no-logo hoodie in brushed fleece with a lined hood and kangaroo pocket. Boxy fit, made to layer under the bomber or on its own.", sizes:["S","M","L","XL"], stock:20, gender:"Unisex", color:"Black", gstPercent:12, deliveryCharge:49 },
+    { name:"Track Jacket 01", cat:"Outerwear", price:2799, seed:"nxt5", rating:4.2, desc:"Zip-through track jacket in a lightweight tricot with taped seams. Stands up to wind without trapping heat.", sizes:["S","M","L","XL"], stock:15, gender:"Men", color:"Navy", gstPercent:12, deliveryCharge:49 },
+    { name:"Ash Denim Jeans", cat:"Bottoms", price:2499, seed:"nxt6", rating:4.5, desc:"Straight-leg denim in a stonewashed ash tone. Mid-rise, with just enough stretch to stay comfortable through a full day.", sizes:["S","M","L","XL"], stock:22, gender:"Women", color:"Blue", gstPercent:12, deliveryCharge:49 },
+    { name:"Ribbed Beanie", cat:"Accessories", price:499, seed:"nxt7", rating:4.7, desc:"A tight-rib knit beanie in a snug, no-slouch fit. One size, stretches to fit most heads comfortably.", sizes:["One Size"], stock:40, gender:"Unisex", color:"Beige", gstPercent:5, deliveryCharge:29 },
+    { name:"Combat Sneakers", cat:"Footwear", price:3499, seed:"nxt8", badge:"New", rating:4.6, desc:"Chunky combat-sole sneakers in full-grain leather. Padded collar and a grippy tread built for the city and beyond.", sizes:["S","M","L","XL"], stock:12, gender:"Unisex", color:"Black", gstPercent:18, deliveryCharge:79 },
   ];
   let products = [];
 
@@ -1189,7 +1255,7 @@
     pendingAmount = cartItems.reduce((s,p)=>s+(p.price*p.qty),0);
     pendingOrderItems = cartItems.map(i=>({name:i.name, seed:i.seed, size:i.size, qty:i.qty, price:i.price}));
     pendingIsCart = true;
-    if(isLoggedIn){ openPayment(pendingAmount); } else {
+    if(isLoggedIn){ openCheckout(); } else {
       loginContext = 'checkout';
       skipLoginWrap.style.display = 'none';
       loginModal.classList.add('show');
@@ -1208,7 +1274,7 @@
     pendingAmount = p.price;
     pendingOrderItems = [{ name:p.name, seed:p.seed, size:p.sizes[0], qty:1, price:p.price }];
     pendingIsCart = false;
-    if(isLoggedIn){ openPayment(pendingAmount); } else {
+    if(isLoggedIn){ openCheckout(); } else {
       loginContext = 'checkout';
       skipLoginWrap.style.display = 'none';
       loginModal.classList.add('show');
@@ -1289,11 +1355,48 @@
     pendingOrderItems = [{ name:detailProduct.name, seed:detailProduct.seed, size:detailSize, qty:detailQty, price:detailProduct.price }];
     pendingIsCart = false;
     productDetailPage.classList.remove('open');
-    if(isLoggedIn){ openPayment(pendingAmount); } else {
+    if(isLoggedIn){ openCheckout(); } else {
       loginContext = 'checkout';
       skipLoginWrap.style.display = 'none';
       loginModal.classList.add('show');
     }
+  };
+
+  // ---- checkout (order summary with GST + delivery) ----
+  const checkoutPage = document.getElementById('checkoutPage');
+  let checkoutFinalTotal = 0;
+
+  function openCheckout(){
+    let subtotal = 0, gst = 0, delivery = 0;
+    document.getElementById('checkoutItemsList').innerHTML = pendingOrderItems.map(it=>{
+      const prod = products.find(x=>x.seed===it.seed) || {};
+      const lineTotal = it.price * it.qty;
+      const lineGst = lineTotal * ((prod.gstPercent||0)/100);
+      subtotal += lineTotal;
+      gst += lineGst;
+      delivery = Math.max(delivery, prod.deliveryCharge||0);
+      return `<div class="checkout-item">
+        <img src="${productImg(prod.seed?prod:{seed:it.seed},100,120)}" alt="${it.name}">
+        <div class="ci-info">
+          <div class="ci-name">${it.name}</div>
+          <div class="ci-price">Size ${it.size} · Qty ${it.qty} · ₹${it.price} each</div>
+        </div>
+        <div class="ci-linetotal">₹${lineTotal}</div>
+      </div>`;
+    }).join('');
+    gst = Math.round(gst);
+    checkoutFinalTotal = subtotal + gst + delivery;
+    document.getElementById('csSubtotal').textContent = '₹'+subtotal;
+    document.getElementById('csGst').textContent = '₹'+gst;
+    document.getElementById('csDelivery').textContent = delivery ? '₹'+delivery : 'Free';
+    document.getElementById('csTotal').textContent = '₹'+checkoutFinalTotal;
+    checkoutPage.classList.add('open');
+  }
+  document.getElementById('closeCheckout').onclick = ()=> checkoutPage.classList.remove('open');
+  document.getElementById('continueToPaymentBtn').onclick = ()=>{
+    pendingAmount = checkoutFinalTotal;
+    checkoutPage.classList.remove('open');
+    openPayment(pendingAmount);
   };
 
   function openPayment(amount){
@@ -1315,7 +1418,7 @@
       document.getElementById('cpLoggedOutMsg').style.display='none';
       document.getElementById('changePasswordForm').style.display='block';
     } else {
-      openPayment(pendingAmount);
+      openCheckout();
     }
   }
 
@@ -1548,8 +1651,12 @@
     paymentPage.classList.remove('open');
     if(pendingIsCart){ cartItems = []; renderCart(); }
     goPage('orders');
-    alert('Order placed successfully! 🎉');
+    document.getElementById('successOrderLine').textContent = `₹${pendingAmount} · ${method} — you'll see it in Orders.`;
+    document.getElementById('orderSuccessModal').classList.add('show');
   }
+  document.getElementById('successContinueBtn').onclick = ()=>{
+    document.getElementById('orderSuccessModal').classList.remove('show');
+  };
 
   // ---- Razorpay ----
   // Your real public Key ID (safe to expose in frontend code — starts with rzp_).
@@ -1893,6 +2000,42 @@
   document.querySelectorAll('[data-toggle]').forEach(t=>{
     t.addEventListener('click', ()=> t.classList.toggle('on'));
   });
+
+  // ---- background scroll lock while any overlay is open ----
+  let lockedScrollY = 0;
+  let isScrollLocked = false;
+  function anyOverlayOpen(){
+    return document.querySelector('.fullpage.open') ||
+      document.getElementById('loginModal').classList.contains('show') ||
+      document.getElementById('drawer').classList.contains('open') ||
+      document.getElementById('welcome').style.display !== 'none';
+  }
+  function updateScrollLock(){
+    const shouldLock = anyOverlayOpen();
+    if(shouldLock && !isScrollLocked){
+      lockedScrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = (-lockedScrollY) + 'px';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      isScrollLocked = true;
+    } else if(!shouldLock && isScrollLocked){
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      window.scrollTo(0, lockedScrollY);
+      isScrollLocked = false;
+    }
+  }
+  const scrollLockObserver = new MutationObserver(updateScrollLock);
+  document.querySelectorAll('.fullpage').forEach(el=>{
+    scrollLockObserver.observe(el, { attributes:true, attributeFilter:['class'] });
+  });
+  scrollLockObserver.observe(document.getElementById('loginModal'), { attributes:true, attributeFilter:['class'] });
+  scrollLockObserver.observe(document.getElementById('drawer'), { attributes:true, attributeFilter:['class'] });
+  scrollLockObserver.observe(document.getElementById('welcome'), { attributes:true, attributeFilter:['style'] });
+  updateScrollLock();
 
 </script>
 </body>
