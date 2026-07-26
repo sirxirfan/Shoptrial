@@ -308,11 +308,25 @@
     opacity:0; pointer-events:none; transition:opacity 0.2s ease; padding:20px;
   }
   #imageLightbox.show{ opacity:1; pointer-events:auto; }
-  #imageLightbox img{ max-width:100%; max-height:88vh; border-radius:10px; object-fit:contain; }
+  .lightbox-track{
+    display:flex; width:100%; height:88vh; overflow-x:auto;
+    scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  .lightbox-track::-webkit-scrollbar{ display:none; }
+  .lightbox-track img{ flex:0 0 100%; width:100%; height:100%; object-fit:contain; scroll-snap-align:start; border-radius:10px; }
   .lightbox-close{
     position:absolute; top:20px; right:20px; width:38px; height:38px; border-radius:50%;
-    background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; cursor:pointer;
+    background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2;
   }
+  .lightbox-arrow{
+    position:absolute; top:50%; transform:translateY(-50%); width:42px; height:42px; border-radius:50%;
+    background:rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2;
+  }
+  .lightbox-prev{ left:14px; }
+  .lightbox-next{ right:14px; }
+  .lightbox-dots{ position:absolute; bottom:26px; left:0; right:0; display:flex; gap:6px; justify-content:center; z-index:2; }
+  .lightbox-dots .pd-dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.35); }
+  .lightbox-dots .pd-dot.active{ background:var(--accent); width:16px; border-radius:4px; }
   .pd-carousel{ cursor:zoom-in; }
 
   #orderSuccessModal{
@@ -592,10 +606,17 @@
   </div>
 
   <div id="imageLightbox" onclick="closeLightbox()">
-    <div class="lightbox-close">
+    <div class="lightbox-close" onclick="event.stopPropagation(); closeLightbox()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </div>
-    <img id="lightboxImg" alt="">
+    <div class="lightbox-arrow lightbox-prev" onclick="event.stopPropagation(); lightboxNav(-1)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div class="lightbox-track" id="lightboxTrack" onclick="event.stopPropagation()"></div>
+    <div class="lightbox-arrow lightbox-next" onclick="event.stopPropagation(); lightboxNav(1)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <div class="lightbox-dots" id="lightboxDots"></div>
   </div>
 
   <div id="orderSuccessModal">
@@ -1152,18 +1173,20 @@
     }
     return { min: p.price, isRange: false };
   }
-  function discountPercent(p){
-    if(p.comparePrice && p.comparePrice > basePrice(p)){
-      return Math.round((p.comparePrice - basePrice(p)) / p.comparePrice * 100);
+  // correct, size-aware discount: pass the EXACT price being shown, not always the cheapest size
+  function discountFor(comparePrice, actualPrice){
+    if(comparePrice && comparePrice > actualPrice){
+      return Math.round((comparePrice - actualPrice) / comparePrice * 100);
     }
     return 0;
   }
   function priceRowHTML(p){
     const range = priceRangeInfo(p);
-    const disc = discountPercent(p);
+    const disc = discountFor(p.comparePrice, range.min);
     const priceText = (range.isRange ? 'From ₹' : '₹') + range.min;
     if(disc > 0){
-      return `<div class="price"><span>${priceText}</span> <span class="compare-price">₹${p.comparePrice}</span> <span class="discount-badge">${disc}% OFF</span></div>`;
+      const label = range.isRange ? `Up to ${disc}% OFF` : `${disc}% OFF`;
+      return `<div class="price"><span>${priceText}</span> <span class="compare-price">₹${p.comparePrice}</span> <span class="discount-badge">${label}</span></div>`;
     }
     return `<div class="price">${priceText}</div>`;
   }
@@ -1353,10 +1376,28 @@
   let pdCurrentImgs = [];
   let pdActiveIdx = 0;
 
+  let lightboxIdx = 0;
   function openLightbox(){
     if(!pdCurrentImgs.length) return;
-    document.getElementById('lightboxImg').src = pdCurrentImgs[pdActiveIdx];
+    lightboxIdx = pdActiveIdx;
+    const track = document.getElementById('lightboxTrack');
+    track.innerHTML = pdCurrentImgs.map(src=>`<img src="${src}" alt="">`).join('');
+    const dotsEl = document.getElementById('lightboxDots');
+    const multi = pdCurrentImgs.length > 1;
+    dotsEl.innerHTML = multi ? pdCurrentImgs.map((_,i)=>`<div class="pd-dot ${i===lightboxIdx?'active':''}"></div>`).join('') : '';
+    document.querySelector('.lightbox-prev').style.display = multi ? 'flex' : 'none';
+    document.querySelector('.lightbox-next').style.display = multi ? 'flex' : 'none';
     document.getElementById('imageLightbox').classList.add('show');
+    requestAnimationFrame(()=>{ track.scrollLeft = lightboxIdx * track.clientWidth; });
+    track.onscroll = ()=>{
+      lightboxIdx = Math.round(track.scrollLeft / track.clientWidth);
+      document.querySelectorAll('#lightboxDots .pd-dot').forEach((d,i)=> d.classList.toggle('active', i===lightboxIdx));
+    };
+  }
+  function lightboxNav(dir){
+    const track = document.getElementById('lightboxTrack');
+    const newIdx = Math.max(0, Math.min(pdCurrentImgs.length-1, lightboxIdx + dir));
+    track.scrollTo({ left: newIdx * track.clientWidth, behavior:'smooth' });
   }
   function closeLightbox(){
     document.getElementById('imageLightbox').classList.remove('show');
@@ -1389,7 +1430,7 @@
     document.getElementById('pdRating').innerHTML = starRating(p.rating);
     function renderPdPrice(){
       const unit = priceForSize(p, detailSize);
-      const disc = discountPercent(p);
+      const disc = discountFor(p.comparePrice, unit);
       document.getElementById('pdPrice').innerHTML = disc > 0
         ? `₹${unit} <span class="compare-price" style="font-size:14px;">₹${p.comparePrice}</span> <span class="discount-badge">${disc}% OFF</span>`
         : `₹${unit}`;
