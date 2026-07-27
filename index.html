@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NXTSOUL</title>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
@@ -191,6 +193,23 @@
     padding:12px 14px; margin-bottom:10px; font-size:13.5px; color:var(--ink);
   }
   .list-entry .le-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+
+  .locate-row{ display:flex; gap:8px; margin-bottom:6px; }
+  .locate-btn{
+    flex:1; background:rgba(198,255,61,0.08); border:1px solid rgba(198,255,61,0.25);
+    color:var(--accent); padding:11px 8px; border-radius:11px; font-weight:600; font-size:12px;
+    cursor:pointer; font-family:'Inter';
+  }
+  .locate-btn:active{ background:rgba(198,255,61,0.16); }
+
+  #mapPickerPage{ padding-bottom:20px; }
+  .map-wrap{ position:relative; flex:1; margin:0 -20px; min-height:300px; }
+  #leafletMap{ width:100%; height:100%; }
+  .map-center-pin{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-100%);
+    font-size:34px; pointer-events:none; z-index:500;
+    filter:drop-shadow(0 3px 5px rgba(0,0,0,0.5));
+  }
   .le-delete{
     width:28px; height:28px; border-radius:8px; background:rgba(255,107,107,0.1);
     display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
@@ -344,6 +363,21 @@
   #orderSuccessModal h3{ font-size:19px; margin-bottom:8px; }
   #orderSuccessModal p{ color:var(--muted); font-size:13px; margin-bottom:22px; }
   #orderSuccessModal button{
+    width:100%; background:var(--accent); color:var(--accent-ink); border:none;
+    padding:13px; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer; font-family:'Space Grotesk';
+  }
+
+  #addressPromptModal{
+    position:fixed; inset:0; z-index:410;
+    background:rgba(0,0,0,0.65); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease;
+    padding:20px;
+  }
+  #addressPromptModal.show{ opacity:1; pointer-events:auto; }
+  #addressPromptModal h3{ font-size:18px; margin-bottom:8px; }
+  #addressPromptModal p{ color:var(--muted); font-size:13px; margin-bottom:20px; }
+  #addressPromptModal button{
     width:100%; background:var(--accent); color:var(--accent-ink); border:none;
     padding:13px; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer; font-family:'Space Grotesk';
   }
@@ -617,6 +651,16 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
     <div class="lightbox-dots" id="lightboxDots"></div>
+  </div>
+
+  <div id="addressPromptModal">
+    <div class="login-box" style="text-align:center;">
+      <div style="font-size:34px; margin-bottom:8px;">📍</div>
+      <h3>Add your delivery address</h3>
+      <p>Save it once — we'll use it for faster checkout every time.</p>
+      <button type="button" id="addAddressNowBtn">Add Address</button>
+      <div class="login-note" style="margin-top:14px;"><a id="maybeLaterBtn">Maybe later</a></div>
+    </div>
   </div>
 
   <div id="orderSuccessModal">
@@ -903,25 +947,42 @@
       </div>
       <div class="fp-title">Saved Addresses</div>
     </div>
-    <div id="addressesList">
-      <div class="list-entry" style="display:flex; align-items:center; justify-content:space-between;">
-        <div>Home <div class="le-sub">221B, Baker Street, Mumbai — 400001</div></div>
-        <div class="le-delete" onclick="this.closest('.list-entry').remove()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-        </div>
-      </div>
-    </div>
+    <div id="addressesList"></div>
     <form id="addAddressForm" style="margin-top:16px;">
       <div class="form-label">Label</div>
-      <input class="form-input" type="text" placeholder="Home / Work / Other" required>
+      <input class="form-input" id="addrLabel" type="text" placeholder="Home / Work / Other" required>
+
+      <div class="locate-row">
+        <button type="button" class="locate-btn" id="useLocationBtn">📍 Use current location</button>
+        <button type="button" class="locate-btn" id="pickMapBtn">🗺️ Pick on map</button>
+      </div>
+      <div id="addrLocateStatus" style="display:none; font-size:12px; color:var(--muted); margin:-6px 0 12px;"></div>
+
       <div class="form-label">Address</div>
-      <input class="form-input" type="text" placeholder="House no, street, area" required>
+      <input class="form-input" id="addrLine" type="text" placeholder="House no, street, area" required>
       <div class="form-label">City</div>
-      <input class="form-input" type="text" placeholder="City" required>
+      <input class="form-input" id="addrCity" type="text" placeholder="City" required>
       <div class="form-label">Pincode</div>
-      <input class="form-input" type="text" placeholder="6-digit pincode" required>
+      <input class="form-input" id="addrPincode" type="text" placeholder="6-digit pincode" required>
       <button class="btn-primary" type="submit">Save Address</button>
     </form>
+  </div>
+
+  <div id="mapPickerPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closeMapPicker">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Pick your location</div>
+    </div>
+    <div class="map-wrap">
+      <div id="leafletMap"></div>
+      <div class="map-center-pin">📍</div>
+    </div>
+    <div style="padding-top:14px;">
+      <div id="mapAddressPreview" style="font-size:12.5px; color:var(--muted); margin-bottom:12px;">Move the map to position the pin over your location</div>
+      <button class="btn-primary" id="confirmMapLocationBtn" type="button">Confirm this location</button>
+    </div>
   </div>
 
   <div id="changePasswordPage" class="fullpage">
@@ -1043,7 +1104,36 @@
       <div class="cs-row"><span>Delivery</span><span id="csDelivery">₹0</span></div>
       <div class="cs-row cs-total"><span>Total</span><span id="csTotal">₹0</span></div>
     </div>
-    <button class="btn-primary" id="continueToPaymentBtn" type="button" style="margin-top:18px;">Continue to Payment</button>
+    <button class="btn-primary" id="continueToPaymentBtn" type="button" style="margin-top:18px;">Continue</button>
+  </div>
+
+  <div id="addressStepPage" class="fullpage">
+    <div class="fp-header">
+      <div class="fp-back" id="closeAddressStep">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </div>
+      <div class="fp-title">Delivery Address</div>
+    </div>
+    <div id="savedAddressPicker" style="margin-bottom:14px;"></div>
+    <div class="form-label">Use current location or a different address</div>
+    <div class="locate-row">
+      <button type="button" class="locate-btn" id="stepUseLocationBtn">📍 Use current location</button>
+      <button type="button" class="locate-btn" id="stepPickMapBtn">🗺️ Pick on map</button>
+    </div>
+    <div id="stepLocateStatus" style="display:none; font-size:12px; color:var(--muted); margin:-6px 0 12px;"></div>
+    <form id="addressStepForm">
+      <div class="form-label">Full name</div>
+      <input class="form-input" id="stepName" type="text" placeholder="Full name" required>
+      <div class="form-label">Phone number</div>
+      <input class="form-input" id="stepPhone" type="tel" placeholder="10-digit mobile number" required>
+      <div class="form-label">Address</div>
+      <input class="form-input" id="stepAddress" type="text" placeholder="House no, street, area" required>
+      <div class="form-label">City</div>
+      <input class="form-input" id="stepCity" type="text" placeholder="City" required>
+      <div class="form-label">Pincode</div>
+      <input class="form-input" id="stepPincode" type="text" placeholder="6-digit pincode" required>
+      <button class="btn-primary" type="submit">Continue to Payment</button>
+    </form>
   </div>
 
   <div id="paymentPage" class="fullpage">
@@ -1065,42 +1155,10 @@
       <button class="btn-primary" type="button" id="razorpayPayBtn">Pay ₹<span id="rzpAmountLabel">0</span> Now</button>
     </div>
 
-    <form id="codForm" style="display:none;">
-      <div class="form-label">Full name</div>
-      <input class="form-input" id="codName" type="text" placeholder="Full name" required>
-      <div class="form-label">Phone number</div>
-      <input class="form-input" id="codPhone" type="tel" placeholder="10-digit mobile number" required>
-      <div class="form-label">Delivery address</div>
-      <input class="form-input" id="codAddress" type="text" placeholder="House no, street, area" required>
-      <div class="form-label">City</div>
-      <input class="form-input" id="codCity" type="text" placeholder="City" required>
-      <div class="form-label">Pincode</div>
-      <input class="form-input" id="codPincode" type="text" placeholder="6-digit pincode" required>
-      <button class="btn-primary" type="submit">Place COD Order</button>
-    </form>
-  </div>
-
-  <div id="shipAddressPage" class="fullpage">
-    <div class="fp-header">
-      <div class="fp-back" id="closeShipAddress">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      </div>
-      <div class="fp-title">Delivery Address</div>
+    <div id="codConfirmBlock" style="display:none;">
+      <p style="color:var(--muted); font-size:13px; margin-bottom:18px; line-height:1.6;">Pay in cash when your order is delivered.</p>
+      <button class="btn-primary" type="button" id="placeCodOrderBtn">Place COD Order</button>
     </div>
-    <p style="color:var(--muted); font-size:13px; margin-bottom:18px;">Payment received ✅ — just need to know where to send it.</p>
-    <form id="shipAddressForm">
-      <div class="form-label">Full name</div>
-      <input class="form-input" id="shipName" type="text" placeholder="Full name" required>
-      <div class="form-label">Phone number</div>
-      <input class="form-input" id="shipPhone" type="tel" placeholder="10-digit mobile number" required>
-      <div class="form-label">Delivery address</div>
-      <input class="form-input" id="shipAddress" type="text" placeholder="House no, street, area" required>
-      <div class="form-label">City</div>
-      <input class="form-input" id="shipCity" type="text" placeholder="City" required>
-      <div class="form-label">Pincode</div>
-      <input class="form-input" id="shipPincode" type="text" placeholder="6-digit pincode" required>
-      <button class="btn-primary" type="submit">Confirm Order</button>
-    </form>
   </div>
 
   <div id="bottombar">
@@ -1320,6 +1378,7 @@
     document.getElementById('welcome').style.display='none';
     if(isLoggedIn){
       document.getElementById('app').style.display='block';
+      maybePromptAddress();
     } else {
       loginContext = 'initial';
       skipLoginWrap.style.display = 'block';
@@ -1542,6 +1601,7 @@
     loginModal.classList.remove('show');
     if(loginContext === 'initial'){
       document.getElementById('app').style.display='block';
+      maybePromptAddress();
     } else if(loginContext === 'account'){
       document.getElementById('changePasswordPage').classList.add('open');
       document.getElementById('cpLoggedOutMsg').style.display='none';
@@ -1728,6 +1788,7 @@
           document.querySelector('.profile-avatar').textContent = name.charAt(0).toUpperCase() || 'N';
         });
         if(loginModal.classList.contains('show')){ afterAuthSuccess(); }
+        else if(document.getElementById('app').style.display === 'block'){ maybePromptAddress(); }
       } else {
         isLoggedIn = false;
         currentUser = null;
@@ -1752,6 +1813,7 @@
       tab.classList.add('active');
       document.getElementById('onlinePayBlock').style.display = tab.dataset.pay==='upi' ? 'block':'none';
       document.getElementById('codForm').style.display = tab.dataset.pay==='cod' ? 'block':'none';
+      if(tab.dataset.pay==='cod'){ autofillShippingFields('cod'); }
     });
   });
 
@@ -1846,6 +1908,7 @@
               };
               paymentPage.classList.remove('open');
               document.getElementById('shipAddressPage').classList.add('open');
+              autofillShippingFields('ship');
             } else {
               errBox.textContent = 'Payment could not be verified. If money was deducted, it will be refunded automatically.';
               errBox.style.display = 'block';
@@ -1969,7 +2032,8 @@
     document.getElementById('piPhone').value = (currentUser && currentUser.phone) || '';
   });
   wireSubpage('rowPaymentMethods','paymentMethodsPage','closePaymentMethods');
-  wireSubpage('rowAddresses','addressesPage','closeAddresses');
+  document.getElementById('rowAddresses').onclick = ()=>{ document.getElementById('addressesPage').classList.add('open'); loadAddresses(); };
+  document.getElementById('closeAddresses').onclick = ()=> document.getElementById('addressesPage').classList.remove('open');
   document.getElementById('closeChangePassword').onclick = ()=> document.getElementById('changePasswordPage').classList.remove('open');
 
   document.getElementById('personalInfoForm').addEventListener('submit', (e)=>{
@@ -1988,6 +2052,166 @@
     document.getElementById('personalInfoPage').classList.remove('open');
   });
 
+  // ==================== ADDRESSES (real, Firestore-backed) ====================
+  let userAddresses = [];
+  let pickedLat = null, pickedLng = null;
+
+  function reverseGeocode(lat, lng){
+    return fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`)
+      .then(r=>r.json())
+      .then(data=>{
+        const a = data.address || {};
+        const line = [a.house_number, a.road, a.suburb || a.neighbourhood || a.residential].filter(Boolean).join(', ') || (data.display_name||'').split(',').slice(0,2).join(',');
+        const city = a.city || a.town || a.village || a.county || '';
+        const pincode = a.postcode || '';
+        return { line, city, pincode };
+      });
+  }
+
+  function loadAddresses(){
+    const list = document.getElementById('addressesList');
+    if(!(firebaseReady && auth.currentUser)){
+      list.innerHTML = `<p style="color:var(--muted);font-size:13px;">Login to save addresses.</p>`;
+      return;
+    }
+    db.collection('users').doc(auth.currentUser.uid).get().then(doc=>{
+      userAddresses = (doc.exists && doc.data().addresses) || [];
+      renderAddressesList();
+    });
+  }
+  function renderAddressesList(){
+    const list = document.getElementById('addressesList');
+    if(!userAddresses.length){ list.innerHTML = `<p style="color:var(--muted);font-size:13px;">No addresses saved yet.</p>`; return; }
+    list.innerHTML = userAddresses.map((a,i)=>`
+      <div class="list-entry" style="display:flex; align-items:center; justify-content:space-between;">
+        <div>${a.label} <div class="le-sub">${a.line}, ${a.city} — ${a.pincode}</div></div>
+        <div class="le-delete" onclick="deleteAddress(${i})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </div>
+      </div>`).join('');
+  }
+  function deleteAddress(i){
+    userAddresses.splice(i,1);
+    saveAddressesToFirestore();
+  }
+  function saveAddressesToFirestore(){
+    if(!(firebaseReady && auth.currentUser)) return;
+    db.collection('users').doc(auth.currentUser.uid).set({ addresses: userAddresses }, { merge:true })
+      .then(renderAddressesList)
+      .catch(err=>console.warn('address save failed', err));
+  }
+
+  document.getElementById('addAddressForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    if(!(firebaseReady && auth.currentUser)){ alert('Please login to save an address.'); return; }
+    userAddresses.push({
+      label: document.getElementById('addrLabel').value.trim(),
+      line: document.getElementById('addrLine').value.trim(),
+      city: document.getElementById('addrCity').value.trim(),
+      pincode: document.getElementById('addrPincode').value.trim(),
+      lat: pickedLat, lng: pickedLng
+    });
+    saveAddressesToFirestore();
+    e.target.reset();
+    pickedLat = null; pickedLng = null;
+    document.getElementById('addressPromptModal').classList.remove('show');
+  });
+
+  // ---- use current GPS location ----
+  document.getElementById('useLocationBtn').onclick = ()=>{
+    const statusEl = document.getElementById('addrLocateStatus');
+    if(!navigator.geolocation){
+      statusEl.textContent = "Your browser doesn't support location.";
+      statusEl.style.display='block';
+      return;
+    }
+    statusEl.textContent = 'Getting your location...';
+    statusEl.style.display='block';
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        pickedLat = pos.coords.latitude;
+        pickedLng = pos.coords.longitude;
+        statusEl.textContent = 'Looking up address...';
+        reverseGeocode(pickedLat, pickedLng).then(addr=>{
+          document.getElementById('addrLine').value = addr.line;
+          document.getElementById('addrCity').value = addr.city;
+          document.getElementById('addrPincode').value = addr.pincode;
+          statusEl.textContent = 'Location filled in — check it below.';
+          setTimeout(()=>{ statusEl.style.display='none'; }, 2500);
+        });
+      },
+      err=>{
+        statusEl.textContent = 'Could not get location — allow permission and try again, or fill manually.';
+      }
+    );
+  };
+
+  // ---- pick on map ----
+  let leafletMapInstance = null;
+  document.getElementById('pickMapBtn').onclick = ()=>{
+    document.getElementById('mapPickerPage').classList.add('open');
+    setTimeout(()=>{
+      if(!leafletMapInstance){
+        leafletMapInstance = L.map('leafletMap').setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(leafletMapInstance);
+      }
+      leafletMapInstance.invalidateSize();
+      if(pickedLat && pickedLng){ leafletMapInstance.setView([pickedLat, pickedLng], 15); }
+      else if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(pos=>{
+          leafletMapInstance.setView([pos.coords.latitude, pos.coords.longitude], 15);
+        }, ()=>{});
+      }
+    }, 150);
+  };
+  document.getElementById('closeMapPicker').onclick = ()=> document.getElementById('mapPickerPage').classList.remove('open');
+  document.getElementById('confirmMapLocationBtn').onclick = ()=>{
+    if(!leafletMapInstance) return;
+    const center = leafletMapInstance.getCenter();
+    pickedLat = center.lat; pickedLng = center.lng;
+    document.getElementById('mapAddressPreview').textContent = 'Looking up address...';
+    reverseGeocode(pickedLat, pickedLng).then(addr=>{
+      document.getElementById('addrLine').value = addr.line;
+      document.getElementById('addrCity').value = addr.city;
+      document.getElementById('addrPincode').value = addr.pincode;
+      document.getElementById('mapPickerPage').classList.remove('open');
+    });
+  };
+
+  // ---- post-login "add address" prompt ----
+  let addressPromptShown = false;
+  function maybePromptAddress(){
+    if(!(firebaseReady && auth.currentUser)) return;
+    db.collection('users').doc(auth.currentUser.uid).get().then(doc=>{
+      userAddresses = (doc.exists && doc.data().addresses) || [];
+      if(!addressPromptShown && !userAddresses.length){
+        addressPromptShown = true;
+        setTimeout(()=>{ document.getElementById('addressPromptModal').classList.add('show'); }, 900);
+      }
+    });
+  }
+  document.getElementById('addAddressNowBtn').onclick = ()=>{
+    document.getElementById('addressPromptModal').classList.remove('show');
+    document.getElementById('addressesPage').classList.add('open');
+    loadAddresses();
+  };
+  document.getElementById('maybeLaterBtn').onclick = ()=>{
+    document.getElementById('addressPromptModal').classList.remove('show');
+  };
+
+  // ---- auto-fill checkout with saved address ----
+  function autofillShippingFields(prefix){
+    if(!userAddresses.length) return;
+    const a = userAddresses[0];
+    const nameEl = document.getElementById(prefix+'Name');
+    if(nameEl && !nameEl.value) nameEl.value = (currentUser && currentUser.name) || '';
+    document.getElementById(prefix+'Address').value = a.line;
+    document.getElementById(prefix+'City').value = a.city;
+    document.getElementById(prefix+'Pincode').value = a.pincode;
+  }
+
   function deleteBtnHTML(){
     return `<div class="le-delete" onclick="this.closest('.list-entry').remove()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
@@ -2001,14 +2225,6 @@
     const last4 = num.slice(-4) || '0000';
     const list = document.getElementById('cardsList');
     list.insertAdjacentHTML('beforeend', `<div class="list-entry" style="display:flex;align-items:center;justify-content:space-between;"><div>•••• •••• •••• ${last4} <div class="le-sub">${inputs[1].value} · expires ${inputs[2].value}</div></div>${deleteBtnHTML()}</div>`);
-    e.target.reset();
-  });
-
-  document.getElementById('addAddressForm').addEventListener('submit', (e)=>{
-    e.preventDefault();
-    const inputs = e.target.querySelectorAll('input');
-    const list = document.getElementById('addressesList');
-    list.insertAdjacentHTML('beforeend', `<div class="list-entry" style="display:flex;align-items:center;justify-content:space-between;"><div>${inputs[0].value} <div class="le-sub">${inputs[1].value}, ${inputs[2].value} — ${inputs[3].value}</div></div>${deleteBtnHTML()}</div>`);
     e.target.reset();
   });
 
