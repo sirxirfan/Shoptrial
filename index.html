@@ -195,6 +195,16 @@
   .list-entry .le-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
 
   .locate-row{ display:flex; gap:8px; margin-bottom:6px; }
+  .addr-pick-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin-bottom:8px; cursor:pointer; position:relative;
+  }
+  .addr-pick-card.selected{ border-color:var(--accent); background:rgba(198,255,61,0.06); }
+  .addr-pick-card .apc-label{ font-size:13px; font-weight:700; color:var(--ink); }
+  .addr-pick-card .apc-sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .addr-pick-card.selected::after{
+    content:"✓"; position:absolute; top:12px; right:14px; color:var(--accent); font-weight:700;
+  }
   .locate-btn{
     flex:1; background:rgba(198,255,61,0.08); border:1px solid rgba(198,255,61,0.25);
     color:var(--accent); padding:11px 8px; border-radius:11px; font-weight:600; font-size:12px;
@@ -1348,7 +1358,6 @@
   let pendingAmount = 0;
   let pendingOrderItems = [];
   let pendingIsCart = false;
-  let pendingRazorpayPayment = null;
   let loginContext = 'initial'; // 'initial' (first-run) or 'checkout'
   const loginModal = document.getElementById('loginModal');
   const paymentPage = document.getElementById('paymentPage');
@@ -1584,8 +1593,50 @@
   document.getElementById('continueToPaymentBtn').onclick = ()=>{
     pendingAmount = checkoutFinalTotal;
     checkoutPage.classList.remove('open');
-    openPayment(pendingAmount);
+    openAddressStep();
   };
+
+  let pendingShippingAddress = null;
+
+  function renderSavedAddressPicker(){
+    const el = document.getElementById('savedAddressPicker');
+    if(!userAddresses.length){ el.innerHTML = ''; return; }
+    el.innerHTML = userAddresses.map((a,i)=>`
+      <div class="addr-pick-card ${i===0?'selected':''}" data-idx="${i}" onclick="selectSavedAddress(${i})">
+        <div class="apc-label">${a.label}</div>
+        <div class="apc-sub">${a.line}, ${a.city} — ${a.pincode}</div>
+      </div>`).join('');
+  }
+  function selectSavedAddress(i){
+    document.querySelectorAll('.addr-pick-card').forEach(c=>c.classList.remove('selected'));
+    const card = document.querySelector(`.addr-pick-card[data-idx="${i}"]`);
+    if(card) card.classList.add('selected');
+    const a = userAddresses[i];
+    document.getElementById('stepAddress').value = a.line;
+    document.getElementById('stepCity').value = a.city;
+    document.getElementById('stepPincode').value = a.pincode;
+  }
+
+  function openAddressStep(){
+    document.getElementById('stepName').value = (currentUser && currentUser.name) || '';
+    renderSavedAddressPicker();
+    if(userAddresses.length){ selectSavedAddress(0); }
+    document.getElementById('addressStepPage').classList.add('open');
+  }
+  document.getElementById('closeAddressStep').onclick = ()=> document.getElementById('addressStepPage').classList.remove('open');
+
+  document.getElementById('addressStepForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    pendingShippingAddress = {
+      name: document.getElementById('stepName').value,
+      phone: document.getElementById('stepPhone').value,
+      address: document.getElementById('stepAddress').value,
+      city: document.getElementById('stepCity').value,
+      pincode: document.getElementById('stepPincode').value
+    };
+    document.getElementById('addressStepPage').classList.remove('open');
+    openPayment(pendingAmount);
+  });
 
   function openPayment(amount){
     document.getElementById('payAmount').textContent = "₹"+amount;
@@ -1812,8 +1863,7 @@
       document.querySelectorAll('.pay-tab').forEach(t=>t.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById('onlinePayBlock').style.display = tab.dataset.pay==='upi' ? 'block':'none';
-      document.getElementById('codForm').style.display = tab.dataset.pay==='cod' ? 'block':'none';
-      if(tab.dataset.pay==='cod'){ autofillShippingFields('cod'); }
+      document.getElementById('codConfirmBlock').style.display = tab.dataset.pay==='cod' ? 'block':'none';
     });
   });
 
@@ -1902,13 +1952,12 @@
           .then(r => r.json())
           .then(result => {
             if(result.valid){
-              pendingRazorpayPayment = {
-                paymentId: response.razorpay_payment_id,
-                orderId: response.razorpay_order_id
-              };
               paymentPage.classList.remove('open');
-              document.getElementById('shipAddressPage').classList.add('open');
-              autofillShippingFields('ship');
+              completeOrder('Razorpay', {
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+                ...pendingShippingAddress
+              });
             } else {
               errBox.textContent = 'Payment could not be verified. If money was deducted, it will be refunded automatically.';
               errBox.style.display = 'block';
@@ -1938,32 +1987,8 @@
     });
   });
 
-  document.getElementById('codForm').addEventListener('submit', (e)=>{
-    e.preventDefault();
-    completeOrder('COD', {
-      name: document.getElementById('codName').value,
-      phone: document.getElementById('codPhone').value,
-      address: document.getElementById('codAddress').value,
-      city: document.getElementById('codCity').value,
-      pincode: document.getElementById('codPincode').value
-    });
-  });
-
-  document.getElementById('closeShipAddress').onclick = ()=>{
-    document.getElementById('shipAddressPage').classList.remove('open');
-  };
-  document.getElementById('shipAddressForm').addEventListener('submit', (e)=>{
-    e.preventDefault();
-    completeOrder('Razorpay', {
-      ...pendingRazorpayPayment,
-      name: document.getElementById('shipName').value,
-      phone: document.getElementById('shipPhone').value,
-      address: document.getElementById('shipAddress').value,
-      city: document.getElementById('shipCity').value,
-      pincode: document.getElementById('shipPincode').value
-    });
-    document.getElementById('shipAddressPage').classList.remove('open');
-    document.getElementById('shipAddressForm').reset();
+  document.getElementById('placeCodOrderBtn').addEventListener('click', ()=>{
+    completeOrder('COD', pendingShippingAddress);
   });
 
   // ---- order history ----
@@ -2117,9 +2142,11 @@
     document.getElementById('addressPromptModal').classList.remove('show');
   });
 
-  // ---- use current GPS location ----
-  document.getElementById('useLocationBtn').onclick = ()=>{
-    const statusEl = document.getElementById('addrLocateStatus');
+  // ---- use current GPS location (works for Settings form or checkout address step) ----
+  let geoFillTarget = 'addr';
+  function useCurrentLocationFor(prefix){
+    geoFillTarget = prefix;
+    const statusEl = document.getElementById(prefix==='step' ? 'stepLocateStatus' : 'addrLocateStatus');
     if(!navigator.geolocation){
       statusEl.textContent = "Your browser doesn't support location.";
       statusEl.style.display='block';
@@ -2133,9 +2160,9 @@
         pickedLng = pos.coords.longitude;
         statusEl.textContent = 'Looking up address...';
         reverseGeocode(pickedLat, pickedLng).then(addr=>{
-          document.getElementById('addrLine').value = addr.line;
-          document.getElementById('addrCity').value = addr.city;
-          document.getElementById('addrPincode').value = addr.pincode;
+          document.getElementById(prefix+'Address').value = addr.line;
+          document.getElementById(prefix+'City').value = addr.city;
+          document.getElementById(prefix+'Pincode').value = addr.pincode;
           statusEl.textContent = 'Location filled in — check it below.';
           setTimeout(()=>{ statusEl.style.display='none'; }, 2500);
         });
@@ -2144,11 +2171,14 @@
         statusEl.textContent = 'Could not get location — allow permission and try again, or fill manually.';
       }
     );
-  };
+  }
+  document.getElementById('useLocationBtn').onclick = ()=> useCurrentLocationFor('addr');
+  document.getElementById('stepUseLocationBtn').onclick = ()=> useCurrentLocationFor('step');
 
-  // ---- pick on map ----
+  // ---- pick on map (same reuse pattern) ----
   let leafletMapInstance = null;
-  document.getElementById('pickMapBtn').onclick = ()=>{
+  function openMapPickerFor(prefix){
+    geoFillTarget = prefix;
     document.getElementById('mapPickerPage').classList.add('open');
     setTimeout(()=>{
       if(!leafletMapInstance){
@@ -2165,7 +2195,9 @@
         }, ()=>{});
       }
     }, 150);
-  };
+  }
+  document.getElementById('pickMapBtn').onclick = ()=> openMapPickerFor('addr');
+  document.getElementById('stepPickMapBtn').onclick = ()=> openMapPickerFor('step');
   document.getElementById('closeMapPicker').onclick = ()=> document.getElementById('mapPickerPage').classList.remove('open');
   document.getElementById('confirmMapLocationBtn').onclick = ()=>{
     if(!leafletMapInstance) return;
@@ -2173,9 +2205,9 @@
     pickedLat = center.lat; pickedLng = center.lng;
     document.getElementById('mapAddressPreview').textContent = 'Looking up address...';
     reverseGeocode(pickedLat, pickedLng).then(addr=>{
-      document.getElementById('addrLine').value = addr.line;
-      document.getElementById('addrCity').value = addr.city;
-      document.getElementById('addrPincode').value = addr.pincode;
+      document.getElementById(geoFillTarget+'Address').value = addr.line;
+      document.getElementById(geoFillTarget+'City').value = addr.city;
+      document.getElementById(geoFillTarget+'Pincode').value = addr.pincode;
       document.getElementById('mapPickerPage').classList.remove('open');
     });
   };
@@ -2200,17 +2232,6 @@
   document.getElementById('maybeLaterBtn').onclick = ()=>{
     document.getElementById('addressPromptModal').classList.remove('show');
   };
-
-  // ---- auto-fill checkout with saved address ----
-  function autofillShippingFields(prefix){
-    if(!userAddresses.length) return;
-    const a = userAddresses[0];
-    const nameEl = document.getElementById(prefix+'Name');
-    if(nameEl && !nameEl.value) nameEl.value = (currentUser && currentUser.name) || '';
-    document.getElementById(prefix+'Address').value = a.line;
-    document.getElementById(prefix+'City').value = a.city;
-    document.getElementById(prefix+'Pincode').value = a.pincode;
-  }
 
   function deleteBtnHTML(){
     return `<div class="le-delete" onclick="this.closest('.list-entry').remove()">
