@@ -73,7 +73,7 @@
     position:fixed; top:14px; left:50%; transform:translateX(-50%);
     width:calc(100% - 28px); max-width:1180px;
     z-index:100;
-    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
     padding:10px 14px;
     background:var(--glass-bg);
     backdrop-filter: blur(22px) saturate(180%);
@@ -81,27 +81,26 @@
     border:1px solid var(--glass-border);
     border-radius:18px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+    overflow:hidden;
   }
-  .left-group{ display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
-  .brand-block{ display:flex; align-items:center; gap:9px; flex-shrink:0; order:-1; }
-  .left-group{ order:1; flex:0 0 auto; justify-content:flex-end; }
-  .brand-block img{ width:26px; height:26px; border-radius:6px; }
-  .brand{ font-weight:700; font-size:15px; letter-spacing:0.02em; color:var(--ink); }
+  .left-group{ display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
+  .brand-block{ display:flex; align-items:center; gap:9px; flex-shrink:0; order:-1; min-width:0; }
+  .left-group{ order:1; flex:1 1 auto; justify-content:flex-end; min-width:0; }
+  .brand-block img{ width:26px; height:26px; border-radius:6px; flex-shrink:0; }
+  .brand{ font-weight:700; font-size:15px; letter-spacing:0.02em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .brand-accent{ color:var(--accent); }
 
   .search-wrap{
-    width:210px;
-    flex:0 0 auto;
+    flex:1 1 auto; min-width:44px; max-width:210px;
     display:flex; align-items:center; gap:8px;
     background:rgba(255,255,255,0.06);
     border:1px solid rgba(255,255,255,0.09);
     border-radius:12px;
     padding:8px 12px;
-    min-width:0;
   }
   .search-wrap input{
     border:none; background:transparent; outline:none;
-    font-family:'Inter'; font-size:13.5px; width:100%; color:var(--ink);
+    font-family:'Inter'; font-size:13.5px; width:100%; min-width:0; color:var(--ink);
   }
   .search-wrap input::placeholder{ color:var(--muted); }
   .search-wrap svg{ flex-shrink:0; opacity:0.55; stroke:var(--ink);}
@@ -628,17 +627,22 @@
   .toggle.on::after{ left:19.5px; background:#0d0d0d; }
 
   @media (max-width:640px){
-    .search-wrap{ width:120px; }
-    .search-wrap input{ font-size:12.5px; }
-    .brand .brand-text{ display:none; }
-    #topbar{ gap:8px; padding:9px 10px; }
+    .search-wrap{ max-width:110px; padding:8px 9px; }
+    .search-wrap input{ font-size:12px; }
+    .brand{ font-size:13px; max-width:90px; }
+    #topbar{ gap:6px; padding:9px 10px; }
     main{ padding:100px 16px 120px; }
+  }
+  @media (max-width:360px){
+    .brand{ max-width:60px; }
+    .search-wrap{ max-width:80px; }
   }
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -739,8 +743,21 @@
             <input id="signupPassword" type="password" placeholder="Create password" required>
           </div>
           <div id="signupError" style="color:#ff6b6b; font-size:12px; margin:-4px 0 10px; display:none;"></div>
-          <button type="button" id="signupBtn">Sign Up &amp; Continue</button>
+          <button type="button" id="signupBtn">Send Verification Code</button>
         </form>
+      </div>
+
+      <div id="verifyCodeView" style="display:none;">
+        <h3>Verify your email</h3>
+        <p id="verifyCodeSubtext">We've sent a 6-digit code to your email.</p>
+        <div class="input-field">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <input id="verifyCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code">
+        </div>
+        <div id="verifyCodeError" style="color:#ff6b6b; font-size:12px; margin:-4px 0 10px; display:none;"></div>
+        <div id="verifyCodeMsg" style="color:var(--accent); font-size:12px; margin:-4px 0 10px; display:none;"></div>
+        <button type="button" id="verifyCodeBtn">Verify &amp; Create Account</button>
+        <div class="login-note" style="margin-top:12px;"><a id="resendCodeBtn">Resend code</a></div>
       </div>
 
       <div id="skipLoginWrap" style="display:none;">
@@ -1174,6 +1191,7 @@
     <div id="codConfirmBlock" style="display:none;">
       <p style="color:var(--muted); font-size:13px; margin-bottom:18px; line-height:1.6;">Pay in cash when your order is delivered.</p>
       <button class="btn-primary" type="button" id="placeCodOrderBtn">Place COD Order</button>
+      <div id="codUnavailableMsg" style="display:none; text-align:center; color:var(--muted); font-size:13px; padding:10px 0;">This service is not available right now. Please use online payment instead.</div>
     </div>
   </div>
 
@@ -1733,12 +1751,14 @@
     document.getElementById('tabLogin').classList.remove('active');
     document.getElementById('loginView').style.display='none';
     document.getElementById('signupView').style.display='block';
+    document.getElementById('verifyCodeView').style.display='none';
     document.getElementById('loginError').style.display='none';
   };
   document.getElementById('tabLogin').onclick = ()=>{
     document.getElementById('tabLogin').classList.add('active');
     document.getElementById('tabSignup').classList.remove('active');
     document.getElementById('signupView').style.display='none';
+    document.getElementById('verifyCodeView').style.display='none';
     document.getElementById('loginView').style.display='block';
     document.getElementById('signupError').style.display='none';
   };
@@ -1776,6 +1796,7 @@
   if(!firebaseReady){ markAuthResolved(); }
   loadProductsFromDB();
   loadHomeBanner();
+  loadStoreSettings();
 
   function loadHomeBanner(){
     if(!firebaseReady) return;
@@ -1790,6 +1811,14 @@
       if(b.subtitle) document.getElementById('heroSubtitle').textContent = b.subtitle;
       if(b.eyebrow) document.getElementById('heroEyebrow').textContent = b.eyebrow;
     }).catch(err=>console.warn('banner load failed', err));
+  }
+
+  let codEnabled = true;
+  function loadStoreSettings(){
+    if(!firebaseReady) return;
+    db.collection('settings').doc('store').get().then(doc=>{
+      if(doc.exists && doc.data().codEnabled === false){ codEnabled = false; }
+    }).catch(()=>{});
   }
 
   // demo-mode fallback so the site still works before you paste real Firebase keys
@@ -1819,6 +1848,24 @@
     }
   }
 
+  // Email verification via EmailJS (free, no card needed).
+  // 1) Make a free account at https://www.emailjs.com
+  // 2) Email Services > Add a service (connect Gmail or use their default) > copy the Service ID.
+  // 3) Email Templates > Create template with a {{code}} and {{to_email}} variable > copy the Template ID.
+  // 4) Account > General > copy your Public Key.
+  const EMAILJS_PUBLIC_KEY = "your-public-key";
+  const EMAILJS_SERVICE_ID = "your-service-id";
+  const EMAILJS_TEMPLATE_ID = "your-template-id";
+  if(typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY !== 'your-public-key'){
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  }
+
+  let pendingSignup = null; // { name, email, pass, code, expiresAt }
+
+  function generateCode(){
+    return String(Math.floor(100000 + Math.random()*900000));
+  }
+
   function doSignup(){
     const name = document.getElementById('signupName').value.trim();
     const email = document.getElementById('signupEmail').value.trim().toLowerCase();
@@ -1827,16 +1874,8 @@
     if(!name || !email || !pass){ errBox.textContent = "Please fill in all fields."; errBox.style.display='block'; return; }
     errBox.style.display='none';
 
-    if(firebaseReady){
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then(cred => {
-          return cred.user.updateProfile({ displayName: name }).then(()=>
-            db.collection('users').doc(cred.user.uid).set({ name, email, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
-          );
-        })
-        .then(()=>{ document.getElementById('signupForm').reset(); })
-        .catch(err=>{ errBox.textContent = friendlyAuthError(err); errBox.style.display='block'; });
-    } else {
+    if(!firebaseReady){
+      // demo mode: no email service needed, just create the account directly
       if(demoAccounts.some(a => a.email===email)){
         errBox.textContent = "An account with this email already exists. Please login instead.";
         errBox.style.display='block';
@@ -1850,8 +1889,111 @@
       document.querySelector('.profile-avatar').textContent = name.charAt(0).toUpperCase() || 'R';
       document.getElementById('signupForm').reset();
       afterAuthSuccess();
+      return;
     }
+
+    if(EMAILJS_PUBLIC_KEY === 'your-public-key'){
+      errBox.textContent = "Email verification isn't set up yet — paste your EmailJS keys into the code (see comments near EMAILJS_PUBLIC_KEY).";
+      errBox.style.display='block';
+      return;
+    }
+
+    const signupBtn = document.getElementById('signupBtn');
+    signupBtn.disabled = true;
+    signupBtn.textContent = 'Sending code...';
+
+    auth.fetchSignInMethodsForEmail(email).then(methods=>{
+      if(methods.length){
+        errBox.textContent = "An account with this email already exists. Please login instead.";
+        errBox.style.display='block';
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Send Verification Code';
+        return;
+      }
+      const code = generateCode();
+      pendingSignup = { name, email, pass, code, expiresAt: Date.now() + 10*60*1000 };
+      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email: email, code: code, to_name: name })
+        .then(()=>{
+          signupBtn.disabled = false;
+          signupBtn.textContent = 'Send Verification Code';
+          document.getElementById('signupView').style.display = 'none';
+          document.getElementById('verifyCodeView').style.display = 'block';
+          document.getElementById('verifyCodeSubtext').textContent = `We've sent a 6-digit code to ${email}.`;
+          document.getElementById('verifyCodeError').style.display = 'none';
+          document.getElementById('verifyCodeMsg').style.display = 'none';
+          document.getElementById('verifyCodeInput').value = '';
+        })
+        .catch(err=>{
+          signupBtn.disabled = false;
+          signupBtn.textContent = 'Send Verification Code';
+          errBox.textContent = "Couldn't send the code — check your connection and try again.";
+          errBox.style.display='block';
+          console.warn('EmailJS error', err);
+        });
+    });
   }
+
+  function sendPendingCode(){
+    if(!pendingSignup) return;
+    const code = generateCode();
+    pendingSignup.code = code;
+    pendingSignup.expiresAt = Date.now() + 10*60*1000;
+    return emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email: pendingSignup.email, code: code, to_name: pendingSignup.name });
+  }
+
+  document.getElementById('resendCodeBtn').onclick = ()=>{
+    const msgBox = document.getElementById('verifyCodeMsg');
+    const errBox = document.getElementById('verifyCodeError');
+    errBox.style.display='none';
+    sendPendingCode().then(()=>{
+      msgBox.textContent = 'New code sent!';
+      msgBox.style.display='block';
+      setTimeout(()=>{ msgBox.style.display='none'; }, 3000);
+    }).catch(()=>{
+      errBox.textContent = 'Could not resend — try again.';
+      errBox.style.display='block';
+    });
+  };
+
+  document.getElementById('verifyCodeBtn').addEventListener('click', ()=>{
+    const errBox = document.getElementById('verifyCodeError');
+    const entered = document.getElementById('verifyCodeInput').value.trim();
+    errBox.style.display='none';
+    if(!pendingSignup){ errBox.textContent='Something went wrong — please sign up again.'; errBox.style.display='block'; return; }
+    if(Date.now() > pendingSignup.expiresAt){
+      errBox.textContent = 'This code expired — tap "Resend code" for a new one.';
+      errBox.style.display='block';
+      return;
+    }
+    if(entered !== pendingSignup.code){
+      errBox.textContent = 'Incorrect code — please check and try again.';
+      errBox.style.display='block';
+      return;
+    }
+    const { name, email, pass } = pendingSignup;
+    const btn = document.getElementById('verifyCodeBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating account...';
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(cred => cred.user.updateProfile({ displayName: name }).then(()=>
+        db.collection('users').doc(cred.user.uid).set({ name, email, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+      ))
+      .then(()=>{
+        pendingSignup = null;
+        btn.disabled = false;
+        btn.textContent = 'Verify & Create Account';
+        document.getElementById('signupForm').reset();
+        document.getElementById('verifyCodeView').style.display = 'none';
+        document.getElementById('signupView').style.display = 'block';
+        afterAuthSuccess();
+      })
+      .catch(err=>{
+        btn.disabled = false;
+        btn.textContent = 'Verify & Create Account';
+        errBox.textContent = friendlyAuthError(err);
+        errBox.style.display='block';
+      });
+  });
 
   function googleSignIn(){
     if(!firebaseReady){
@@ -1953,6 +2095,10 @@
       tab.classList.add('active');
       document.getElementById('onlinePayBlock').style.display = tab.dataset.pay==='upi' ? 'block':'none';
       document.getElementById('codConfirmBlock').style.display = tab.dataset.pay==='cod' ? 'block':'none';
+      if(tab.dataset.pay==='cod'){
+        document.getElementById('placeCodOrderBtn').style.display = codEnabled ? 'block' : 'none';
+        document.getElementById('codUnavailableMsg').style.display = codEnabled ? 'none' : 'block';
+      }
     });
   });
 
@@ -2075,6 +2221,7 @@
   });
 
   document.getElementById('placeCodOrderBtn').addEventListener('click', ()=>{
+    if(!codEnabled){ alert('Cash on Delivery is not available right now.'); return; }
     completeOrder('COD', pendingShippingAddress);
   });
 
@@ -2169,15 +2316,29 @@
   let pickedLat = null, pickedLng = null;
 
   function reverseGeocode(lat, lng){
-    return fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`)
+    return fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`)
       .then(r=>r.json())
       .then(data=>{
-        const a = data.address || {};
-        const line = [a.house_number, a.road, a.suburb || a.neighbourhood || a.residential].filter(Boolean).join(', ') || (data.display_name||'').split(',').slice(0,2).join(',');
-        const city = a.city || a.town || a.village || a.county || '';
-        const pincode = a.postcode || '';
+        const parts = [data.locality, (data.city && data.city !== data.locality) ? data.city : ''].filter(Boolean);
+        const line = parts.join(', ') || data.locality || data.city || data.principalSubdivision || '';
+        const city = data.city || data.locality || data.principalSubdivision || '';
+        const pincode = data.postcode || '';
         return { line, city, pincode };
       });
+  }
+  function reverseGeocodeWithTimeout(lat, lng, ms){
+    return Promise.race([
+      reverseGeocode(lat, lng),
+      new Promise((_, reject)=> setTimeout(()=> reject(new Error('geocode-timeout')), ms||8000))
+    ]);
+  }
+  function getLocationWithTimeout(onSuccess, onError){
+    const timer = setTimeout(()=>{ onError({ code:3, message:'timeout' }); }, 12000);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{ clearTimeout(timer); onSuccess(pos); },
+      err=>{ clearTimeout(timer); onError(err); },
+      { enableHighAccuracy:false, timeout:12000, maximumAge:60000 }
+    );
   }
 
   function loadAddresses(){
@@ -2241,21 +2402,28 @@
     }
     statusEl.textContent = 'Getting your location...';
     statusEl.style.display='block';
-    navigator.geolocation.getCurrentPosition(
+    getLocationWithTimeout(
       pos=>{
         pickedLat = pos.coords.latitude;
         pickedLng = pos.coords.longitude;
         statusEl.textContent = 'Looking up address...';
-        reverseGeocode(pickedLat, pickedLng).then(addr=>{
+        reverseGeocodeWithTimeout(pickedLat, pickedLng).then(addr=>{
           document.getElementById(prefix+'Address').value = addr.line;
           document.getElementById(prefix+'City').value = addr.city;
           document.getElementById(prefix+'Pincode').value = addr.pincode;
           statusEl.textContent = 'Location filled in — check it below.';
           setTimeout(()=>{ statusEl.style.display='none'; }, 2500);
+        }).catch(()=>{
+          statusEl.textContent = 'Got your location, but address lookup timed out — fill it in manually below.';
         });
       },
       err=>{
-        statusEl.textContent = 'Could not get location — allow permission and try again, or fill manually.';
+        const messages = {
+          1: 'Location permission denied — allow it in your browser/site settings and try again.',
+          2: "Location unavailable right now — try again, or fill it in manually.",
+          3: "Location took too long — try again, or fill it in manually."
+        };
+        statusEl.textContent = messages[err.code] || 'Could not get location — fill it in manually.';
       }
     );
   }
@@ -2277,9 +2445,9 @@
       leafletMapInstance.invalidateSize();
       if(pickedLat && pickedLng){ leafletMapInstance.setView([pickedLat, pickedLng], 15); }
       else if(navigator.geolocation){
-        navigator.geolocation.getCurrentPosition(pos=>{
+        getLocationWithTimeout(pos=>{
           leafletMapInstance.setView([pos.coords.latitude, pos.coords.longitude], 15);
-        }, ()=>{});
+        }, ()=>{ /* stay on default India view, no error needed here */ });
       }
     }, 150);
   }
@@ -2291,11 +2459,13 @@
     const center = leafletMapInstance.getCenter();
     pickedLat = center.lat; pickedLng = center.lng;
     document.getElementById('mapAddressPreview').textContent = 'Looking up address...';
-    reverseGeocode(pickedLat, pickedLng).then(addr=>{
+    reverseGeocodeWithTimeout(pickedLat, pickedLng).then(addr=>{
       document.getElementById(geoFillTarget+'Address').value = addr.line;
       document.getElementById(geoFillTarget+'City').value = addr.city;
       document.getElementById(geoFillTarget+'Pincode').value = addr.pincode;
       document.getElementById('mapPickerPage').classList.remove('open');
+    }).catch(()=>{
+      document.getElementById('mapAddressPreview').textContent = 'Address lookup timed out — you can still confirm and fill it manually.';
     });
   };
 
