@@ -1853,9 +1853,9 @@
   // 2) Email Services > Add a service (connect Gmail or use their default) > copy the Service ID.
   // 3) Email Templates > Create template with a {{code}} and {{to_email}} variable > copy the Template ID.
   // 4) Account > General > copy your Public Key.
-  const EMAILJS_PUBLIC_KEY = "mdaEYbeCzs3gt1AA1";
-  const EMAILJS_SERVICE_ID = "service_lq3kyqk";
-  const EMAILJS_TEMPLATE_ID = "template_932fliw";
+  const EMAILJS_PUBLIC_KEY = "your-public-key";
+  const EMAILJS_SERVICE_ID = "your-service-id";
+  const EMAILJS_TEMPLATE_ID = "your-template-id";
   if(typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY !== 'your-public-key'){
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
   }
@@ -2315,10 +2315,11 @@
   let userAddresses = [];
   let pickedLat = null, pickedLng = null;
 
-  function reverseGeocode(lat, lng){
+  function reverseGeocodeViaBDC(lat, lng){
     return fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`)
       .then(r=>r.json())
       .then(data=>{
+        if(!data || (!data.city && !data.locality)) throw new Error('empty BDC response');
         const parts = [data.locality, (data.city && data.city !== data.locality) ? data.city : ''].filter(Boolean);
         const line = parts.join(', ') || data.locality || data.city || data.principalSubdivision || '';
         const city = data.city || data.locality || data.principalSubdivision || '';
@@ -2326,10 +2327,25 @@
         return { line, city, pincode };
       });
   }
+  function reverseGeocodeViaNominatim(lat, lng){
+    return fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`)
+      .then(r=>r.json())
+      .then(data=>{
+        const a = data.address || {};
+        const line = [a.house_number, a.road, a.suburb || a.neighbourhood || a.residential].filter(Boolean).join(', ') || (data.display_name||'').split(',').slice(0,2).join(',');
+        const city = a.city || a.town || a.village || a.county || '';
+        const pincode = a.postcode || '';
+        return { line, city, pincode };
+      });
+  }
+  function reverseGeocode(lat, lng){
+    // try one free provider, and if it's blocked/down/slow, automatically fall back to the other
+    return reverseGeocodeViaBDC(lat, lng).catch(()=> reverseGeocodeViaNominatim(lat, lng));
+  }
   function reverseGeocodeWithTimeout(lat, lng, ms){
     return Promise.race([
       reverseGeocode(lat, lng),
-      new Promise((_, reject)=> setTimeout(()=> reject(new Error('geocode-timeout')), ms||8000))
+      new Promise((_, reject)=> setTimeout(()=> reject(new Error('geocode-timeout')), ms||14000))
     ]);
   }
   function getLocationWithTimeout(onSuccess, onError){
