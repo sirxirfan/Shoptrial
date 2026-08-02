@@ -2338,10 +2338,18 @@
         return { line, city, pincode };
       });
   }
-  function reverseGeocode(lat, lng){
-    // try one free provider, and if it's blocked/down/slow, automatically fall back to the other
-    return reverseGeocodeViaBDC(lat, lng).catch(()=> reverseGeocodeViaNominatim(lat, lng));
-  }
+ function reverseGeocode(lat, lng){
+    return reverseGeocodeViaBDC(lat, lng)
+        .catch(err=>{
+            console.error("BDC Failed:", err);
+
+            return reverseGeocodeViaNominatim(lat, lng)
+                .catch(err2=>{
+                    console.error("Nominatim Failed:", err2);
+                    throw err2;
+                });
+        });
+}
   function reverseGeocodeWithTimeout(lat, lng, ms){
     return Promise.race([
       reverseGeocode(lat, lng),
@@ -2423,15 +2431,16 @@
         pickedLat = pos.coords.latitude;
         pickedLng = pos.coords.longitude;
         statusEl.textContent = 'Looking up address...';
-        reverseGeocodeWithTimeout(pickedLat, pickedLng).then(addr=>{
-          document.getElementById(prefix+'Address').value = addr.line;
-          document.getElementById(prefix+'City').value = addr.city;
-          document.getElementById(prefix+'Pincode').value = addr.pincode;
-          statusEl.textContent = 'Location filled in — check it below.';
-          setTimeout(()=>{ statusEl.style.display='none'; }, 2500);
-        }).catch(()=>{
-          statusEl.textContent = 'Got your location, but address lookup timed out — fill it in manually below.';
-        });
+        reverseGeocodeWithTimeout(pickedLat, pickedLng)
+.then(addr=>{
+    ...
+})
+.catch(err=>{
+    console.error(err);
+
+    statusEl.textContent =
+    "Got your location, but address lookup timed out – fill it in manually below.";
+});
       },
       err=>{
         const messages = {
@@ -2480,9 +2489,12 @@
       document.getElementById(geoFillTarget+'City').value = addr.city;
       document.getElementById(geoFillTarget+'Pincode').value = addr.pincode;
       document.getElementById('mapPickerPage').classList.remove('open');
-    }).catch(()=>{
-      document.getElementById('mapAddressPreview').textContent = 'Address lookup timed out — you can still confirm and fill it manually.';
-    });
+   .catch(err=>{
+    console.error(err);
+
+    document.getElementById('mapAddressPreview').textContent =
+    "Address lookup timed out...";
+});
   };
 
   // ---- post-login "add address" prompt ----
