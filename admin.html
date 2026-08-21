@@ -241,13 +241,14 @@
     font-size:12.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;
   }
   .size-price-rows{ margin-bottom:14px; }
-  .size-price-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .size-price-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .spr-check{
-    width:78px; flex-shrink:0; display:flex; align-items:center; gap:6px;
+    width:66px; flex-shrink:0; display:flex; align-items:center; gap:6px;
     font-size:12.5px; font-weight:600; color:var(--ink);
   }
-  .size-price-row .spr-price{ margin-bottom:0; flex:1; }
-  .size-price-row.disabled .spr-price{ opacity:0.4; }
+  .size-price-row .spr-price{ margin-bottom:0; flex:0 0 90px; }
+  .size-price-row .spr-sku{ margin-bottom:0; flex:1; min-width:0; font-family:monospace; font-size:12px; }
+  .size-price-row.disabled .spr-price, .size-price-row.disabled .spr-sku{ opacity:0.4; }
   .modal-actions{ display:flex; gap:10px; margin-top:6px; }
   .modal-actions .btn-blue, .modal-actions .btn-ghost{ flex:1; }
   .image-drop-zone{
@@ -511,27 +512,33 @@
         </select>
         <div class="form-label">Description</div>
         <textarea class="form-input" id="pDesc" rows="3" placeholder="Short product description" required style="resize:vertical;"></textarea>
-        <div class="form-label">Sizes & price per size</div>
+        <div class="form-label">Sizes, price & Qikink SKU per size</div>
+        <div style="font-size:11.5px; color:var(--muted); margin:-4px 0 8px;">Copy each size's exact SKU from Qikink → My Products → Product Variations. Leave SKU blank if a size isn't fulfilled via Qikink.</div>
         <div class="size-price-rows" id="pSizes">
           <div class="size-price-row" data-size="S">
             <label class="spr-check"><input type="checkbox" value="S" checked>S</label>
             <input class="form-input spr-price" type="number" min="0" placeholder="Price for S">
+            <input class="form-input spr-sku" type="text" placeholder="Qikink SKU">
           </div>
           <div class="size-price-row" data-size="M">
             <label class="spr-check"><input type="checkbox" value="M" checked>M</label>
             <input class="form-input spr-price" type="number" min="0" placeholder="Price for M">
+            <input class="form-input spr-sku" type="text" placeholder="Qikink SKU">
           </div>
           <div class="size-price-row" data-size="L">
             <label class="spr-check"><input type="checkbox" value="L" checked>L</label>
             <input class="form-input spr-price" type="number" min="0" placeholder="Price for L">
+            <input class="form-input spr-sku" type="text" placeholder="Qikink SKU">
           </div>
           <div class="size-price-row" data-size="XL">
             <label class="spr-check"><input type="checkbox" value="XL" checked>XL</label>
             <input class="form-input spr-price" type="number" min="0" placeholder="Price for XL">
+            <input class="form-input spr-sku" type="text" placeholder="Qikink SKU">
           </div>
           <div class="size-price-row" data-size="One Size">
             <label class="spr-check"><input type="checkbox" value="One Size">One Size</label>
             <input class="form-input spr-price" type="number" min="0" placeholder="Price">
+            <input class="form-input spr-sku" type="text" placeholder="Qikink SKU">
           </div>
         </div>
         <div class="modal-actions">
@@ -566,6 +573,9 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
+
+  // Same Cloudflare Worker used by the storefront — handles Razorpay + Qikink calls.
+  const PAYMENT_WORKER_URL = "https://razorpay-worker.nxtsoulpayments.workers.dev";
 
   const authGate = document.getElementById('authGate');
   const authLoading = document.getElementById('authLoading');
@@ -736,11 +746,16 @@
       const addrHTML = ((o.method==='COD' || o.method==='Razorpay') && o.details && o.details.name) ? `
         <div class="detail-box">${o.details.name} · ${o.details.phone}<br>${o.details.address}, ${o.details.city} — ${o.details.pincode}</div>` : '';
       const payIdHTML = (o.method==='Razorpay' && o.details && o.details.paymentId) ? `<div class="detail-box">Payment ID: ${o.details.paymentId}</div>` : '';
+      const qikinkHTML = o.qikinkOrderId
+        ? `<div class="detail-box">Qikink Order ID: ${o.qikinkOrderId}</div>`
+        : (o.qikinkError
+            ? `<div class="detail-box" style="color:#ff8a8a;">Qikink push failed: ${o.qikinkError}<br><button class="btn-ghost" type="button" style="margin-top:6px; padding:5px 10px; font-size:11.5px;" onclick="retryQikinkPush('${o.id}')">Retry push to Qikink</button></div>`
+            : `<div class="detail-box">Not yet pushed to Qikink <button class="btn-ghost" type="button" style="margin-left:4px; padding:5px 10px; font-size:11.5px;" onclick="retryQikinkPush('${o.id}')">Push now</button></div>`);
       const date = o.placedAt && o.placedAt.toDate ? o.placedAt.toDate().toLocaleDateString() : 'Just now';
       return `<div class="data-row">
         <div><div class="dr-label">Order</div><div class="dr-id">#${o.id.slice(0,6).toUpperCase()}</div><div class="dr-sub">${date}</div></div>
         <div><div class="dr-label">Customer</div>${o.customerName||'Guest'}<div class="dr-sub">${o.customerEmail||''}</div></div>
-        <div><div class="dr-label">Items</div><div class="dr-sub">${itemsHTML||'—'}</div>${addrHTML}${payIdHTML}</div>
+        <div><div class="dr-label">Items</div><div class="dr-sub">${itemsHTML||'—'}</div>${addrHTML}${payIdHTML}${qikinkHTML}</div>
         <div><div class="dr-label">Method</div>${o.method||'—'}</div>
         <div>
           <div class="dr-label">Status / Amount</div>
@@ -754,6 +769,69 @@
     }).join('');
   }
   document.getElementById('orderSearch').addEventListener('input', ()=> renderOrders());
+
+  // Push (or retry pushing) a single order to Qikink for print + fulfillment.
+  // Uses search_from_my_products so Qikink pulls design/print details from the SKU itself.
+  function buildQikinkPayload(o, orderId){
+    const line_items = (o.items||[]).map(it=>{
+      const product = productsCache.find(p=>p.seed===it.seed);
+      const sku = product && product.qikinkSkus ? product.qikinkSkus[it.size] : null;
+      return { search_from_my_products: 1, quantity: String(it.qty), price: String(it.price), sku: sku || '' };
+    });
+    const missingSku = line_items.some(li=>!li.sku);
+    if(missingSku) throw new Error('One or more items are missing a Qikink SKU for their size — add it in Products.');
+    const d = o.details || {};
+    return {
+      order_number: orderId,
+      qikink_shipping: "1",
+      gateway: o.method === 'COD' ? 'COD' : 'Prepaid',
+      total_order_value: String(o.amount),
+      line_items,
+      shipping_address: {
+        first_name: (d.name||'Customer').split(' ')[0],
+        last_name: (d.name||'').split(' ').slice(1).join(' ') || '.',
+        address1: d.address || '',
+        phone: d.phone || '',
+        email: o.customerEmail || '',
+        city: d.city || '',
+        zip: d.pincode || '',
+        province: d.city || '',
+        country_code: 'IN'
+      }
+    };
+  }
+
+  function retryQikinkPush(orderId){
+    const o = allOrdersCache.find(x=>x.id===orderId);
+    if(!o) return;
+    let payload;
+    try {
+      payload = buildQikinkPayload(o, orderId);
+    } catch(err){
+      alert(err.message);
+      return;
+    }
+    fetch(PAYMENT_WORKER_URL + '/qikink-create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.order_id){
+        db.collection('orders').doc(orderId).update({ qikinkOrderId: String(data.order_id), qikinkError: firebase.firestore.FieldValue.delete() })
+          .then(()=>{ o.qikinkOrderId = String(data.order_id); delete o.qikinkError; renderOrders(); });
+      } else {
+        const msg = data.error || data.message || 'Unknown error from Qikink';
+        db.collection('orders').doc(orderId).update({ qikinkError: String(msg) })
+          .then(()=>{ o.qikinkError = String(msg); renderOrders(); });
+      }
+    })
+    .catch(err=>{
+      db.collection('orders').doc(orderId).update({ qikinkError: 'Network error: ' + err.message })
+        .then(()=>{ o.qikinkError = 'Network error: ' + err.message; renderOrders(); });
+    });
+  }
 
   function printInvoice(orderId){
     const o = allOrdersCache.find(x=>x.id===orderId);
@@ -888,6 +966,7 @@
       const cb = row.querySelector('input[type=checkbox]');
       cb.checked = i<4;
       row.querySelector('.spr-price').value = '';
+      row.querySelector('.spr-sku').value = '';
       row.classList.toggle('disabled', !cb.checked);
     });
     document.getElementById('pGender').value = 'Unisex';
@@ -948,6 +1027,7 @@
       if(isIncluded){
         const sp = (p.sizePrices && p.sizePrices[size] !== undefined) ? p.sizePrices[size] : p.price;
         row.querySelector('.spr-price').value = sp;
+        row.querySelector('.spr-sku').value = (p.qikinkSkus && p.qikinkSkus[size]) ? p.qikinkSkus[size] : '';
       }
     });
     renderImageThumbs();
@@ -969,9 +1049,12 @@
     const basePrice = Number(document.getElementById('pPrice').value);
     const sizes = sizeRows.map(row => row.dataset.size);
     const sizePrices = {};
+    const qikinkSkus = {};
     sizeRows.forEach(row=>{
       const priceInput = row.querySelector('.spr-price');
       sizePrices[row.dataset.size] = priceInput.value ? Number(priceInput.value) : basePrice;
+      const skuVal = row.querySelector('.spr-sku').value.trim();
+      if(skuVal) qikinkSkus[row.dataset.size] = skuVal;
     });
     if(!newImageFiles.length && !keptExistingImages.length){ alert('Please add at least one product photo.'); return; }
     if(CLOUDINARY_CLOUD_NAME === 'your-cloud-name' && newImageFiles.length){
@@ -1002,6 +1085,7 @@
         price: basePrice,
         comparePrice: comparePriceVal ? Number(comparePriceVal) : 0,
         sizePrices: sizePrices,
+        qikinkSkus: qikinkSkus,
         stock: Number(document.getElementById('pStock').value),
         gstPercent: Number(document.getElementById('pGst').value),
         deliveryCharge: Number(document.getElementById('pDelivery').value),
