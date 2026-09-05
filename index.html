@@ -2153,7 +2153,7 @@
         details: details || {},
         status: 'Processing',
         placedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).then((docRef)=>{
+      }).then(()=>{
         loadOrders();
         pendingOrderItems.forEach(it=>{
           db.collection('products').doc(it.seed).update({
@@ -2166,8 +2166,6 @@
           pendingOrder: firebase.firestore.FieldValue.delete()
         }).catch(()=>{});
         document.getElementById('resumeOrderBanner').style.display = 'none';
-        // send this order to Qikink for printing + fulfillment automatically
-        pushOrderToQikink(docRef.id, method, details, pendingAmount, pendingOrderItems, (currentUser && currentUser.email) || auth.currentUser.email || '');
       }).catch(err => console.warn('Order save failed', err));
     }
     paymentPage.classList.remove('open');
@@ -2175,61 +2173,6 @@
     goPage('orders');
     document.getElementById('successOrderLine').textContent = `₹${pendingAmount} · ${method} — you'll see it in Orders.`;
     document.getElementById('orderSuccessModal').classList.add('show');
-  }
-
-  // Push a completed order to Qikink so it enters their print + fulfillment queue.
-  // Uses search_from_my_products so Qikink pulls the design/print details from the SKU itself —
-  // we just need to tell it which SKU, how many, and where to ship.
-  function pushOrderToQikink(orderId, method, details, amount, items, customerEmail){
-    try {
-      const line_items = items.map(it=>{
-        const product = products.find(p=>p.seed===it.seed);
-        const sku = product && product.qikinkSkus ? product.qikinkSkus[it.size] : null;
-        return { search_from_my_products: 1, quantity: String(it.qty), price: String(it.price), sku: sku || '' };
-      });
-      const missingSku = line_items.some(li=>!li.sku);
-      if(missingSku){
-        db.collection('orders').doc(orderId).update({ qikinkError: 'Missing Qikink SKU for one or more sizes' }).catch(()=>{});
-        return;
-      }
-      const d = details || {};
-      const payload = {
-        order_number: orderId,
-        qikink_shipping: "1",
-        gateway: method === 'COD' ? 'COD' : 'Prepaid',
-        total_order_value: String(amount),
-        line_items,
-        shipping_address: {
-          first_name: (d.name||'Customer').split(' ')[0],
-          last_name: (d.name||'').split(' ').slice(1).join(' ') || '.',
-          address1: d.address || '',
-          phone: d.phone || '',
-          email: customerEmail || '',
-          city: d.city || '',
-          zip: d.pincode || '',
-          province: d.city || '',
-          country_code: 'IN'
-        }
-      };
-      fetch(PAYMENT_WORKER_URL + '/qikink-create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then(r=>r.json())
-      .then(data=>{
-        if(data.order_id){
-          db.collection('orders').doc(orderId).update({ qikinkOrderId: String(data.order_id) }).catch(()=>{});
-        } else {
-          db.collection('orders').doc(orderId).update({ qikinkError: String(data.error || data.message || 'Unknown error') }).catch(()=>{});
-        }
-      })
-      .catch(err=>{
-        db.collection('orders').doc(orderId).update({ qikinkError: 'Network error: ' + err.message }).catch(()=>{});
-      });
-    } catch(err){
-      console.warn('Qikink push failed', err);
-    }
   }
   document.getElementById('successContinueBtn').onclick = ()=>{
     document.getElementById('orderSuccessModal').classList.remove('show');
